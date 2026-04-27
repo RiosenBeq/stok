@@ -1,6 +1,8 @@
 import { useAuthStore } from '../store/auth';
 
-const API_BASE = '/api/v1';
+// Backend is mounted at /_/backend per .claude/settings.json. The vite dev
+// server proxies that prefix to localhost:8000 so the same path works locally.
+const API_BASE = '/_/backend/api/v1';
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public body?: unknown) {
