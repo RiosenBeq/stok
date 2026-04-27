@@ -1,11 +1,17 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
+import Section from '@/components/ui/Section';
+import StatCard from '@/components/ui/StatCard';
+import EmptyState from '@/components/ui/EmptyState';
 import Sparkline from '@/components/Sparkline';
 import BarChart from '@/components/BarChart';
+import Tag from '@/components/ui/Tag';
 import { api } from '@/lib/api';
 import { toast } from '@/store/toast';
+import { formatCurrency } from '@/lib/format';
 import type {
   DailySnapshot,
   DashboardStats,
@@ -13,39 +19,12 @@ import type {
   TrendPoint,
 } from '@/types/api';
 
-function StatCard({
-  label,
-  value,
-  hint,
-  accent,
-  icon,
-}: {
-  label: string;
-  value: string | number;
-  hint?: string;
-  accent?: string;
-  icon?: string;
-}) {
-  return (
-    <div className="card">
-      <div className="flex items-start justify-between">
-        <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
-        {icon && <div className="text-xl opacity-60">{icon}</div>}
-      </div>
-      <div className={`mt-2 text-2xl font-semibold ${accent ?? 'text-slate-900'}`}>{value}</div>
-      {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
-    </div>
-  );
-}
-
-function StatSkeleton() {
-  return (
-    <div className="card">
-      <div className="h-3 w-20 bg-slate-200 rounded animate-pulse" />
-      <div className="mt-3 h-7 w-16 bg-slate-200 rounded animate-pulse" />
-    </div>
-  );
-}
+const QUICK_LINKS: Array<{ href: string; label: string; icon: string; tone: string }> = [
+  { href: '/sell',      label: 'Hızlı Satış',    icon: '🍔', tone: 'bg-brand-50 text-brand-700' },
+  { href: '/products',  label: 'Yeni Malzeme',   icon: '📦', tone: 'bg-blue-50 text-blue-700'   },
+  { href: '/movements', label: 'Hareket Ekle',   icon: '🔄', tone: 'bg-amber-50 text-amber-700' },
+  { href: '/waste',     label: 'Zayiat Kaydet',  icon: '🗑️', tone: 'bg-red-50 text-red-700'    },
+];
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -56,7 +35,7 @@ export default function DashboardPage() {
   useEffect(() => {
     Promise.all([
       api.get<DashboardStats>('/reports/dashboard'),
-      api.get<TopProduct[]>('/reports/top-products?movement=out&limit=10'),
+      api.get<TopProduct[]>('/reports/top-products?movement=out&limit=8'),
       api.get<TrendPoint[]>('/sales/trend?days=14'),
       api.get<DailySnapshot[]>('/sales/daily'),
     ])
@@ -69,84 +48,128 @@ export default function DashboardPage() {
       .catch((e: Error) => toast.error(e.message));
   }, []);
 
-  const todayRevenue = daily.reduce((sum, d) => sum + d.revenue, 0);
-  const todaySales = daily.reduce((sum, d) => sum + d.sales_count, 0);
-  const todayMargin = daily.reduce((sum, d) => sum + d.margin, 0);
-  const todayWaste = daily.reduce((sum, d) => sum + d.waste_value, 0);
+  const todayRevenue = daily.reduce((s, d) => s + d.revenue, 0);
+  const todaySales   = daily.reduce((s, d) => s + d.sales_count, 0);
+  const todayMargin  = daily.reduce((s, d) => s + d.margin, 0);
+  const todayWaste   = daily.reduce((s, d) => s + d.waste_value, 0);
+  const fortnightRev = trend.reduce((s, p) => s + p.revenue, 0);
+  const marginPct = todayRevenue > 0 ? (todayMargin / todayRevenue) * 100 : 0;
+
+  const today = new Date().toLocaleDateString('tr-TR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
 
   return (
     <>
-      <PageHeader title="Pano" subtitle="Genel sistem durumu, satış ve stok metrikleri" />
+      <PageHeader
+        title="Pano"
+        subtitle={today}
+        meta={
+          <div className="flex flex-wrap gap-2">
+            <Tag tone="brand" icon="📅">Bugün</Tag>
+            <Tag tone="slate">Tüm şubeler</Tag>
+          </div>
+        }
+      />
 
-      {/* Today's metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <StatCard label="Bugün Ciro" value={`${todayRevenue.toFixed(2)} ₺`} accent="text-brand-700" icon="💰" />
-        <StatCard label="Bugün Sipariş" value={todaySales} icon="🧾" />
-        <StatCard label="Bugün Marj" value={`${todayMargin.toFixed(2)} ₺`} accent="text-green-700" icon="📈" />
-        <StatCard label="Bugün Zayiat" value={`${todayWaste.toFixed(2)} ₺`} accent={todayWaste > 0 ? 'text-amber-700' : 'text-slate-700'} icon="🗑️" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        {QUICK_LINKS.map((q) => (
+          <Link key={q.href} href={q.href} className="card-interactive flex items-center gap-3 p-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${q.tone}`}>
+              {q.icon}
+            </div>
+            <div>
+              <div className="text-sm font-medium text-ink-900">{q.label}</div>
+              <div className="text-[11px] text-ink-500">→ Aç</div>
+            </div>
+          </Link>
+        ))}
       </div>
 
-      {/* Sales trend */}
-      <section className="card mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="font-semibold">Son 14 Gün Cirosu</h2>
-          <span className="text-xs text-slate-500">
-            {trend.reduce((s, p) => s + p.revenue, 0).toFixed(2)} ₺ toplam
-          </span>
-        </div>
-        <Sparkline
-          values={trend.map((p) => p.revenue)}
-          labels={trend.map((p) => p.date)}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <StatCard
+          label="Bugün Ciro"
+          value={formatCurrency(todayRevenue)}
+          tone="brand"
+          icon="💰"
+          hint={`${todaySales} sipariş`}
         />
-      </section>
-
-      {/* Inventory metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        {!stats ? (
-          Array.from({ length: 4 }).map((_, i) => <StatSkeleton key={i} />)
-        ) : (
-          <>
-            <StatCard label="Toplam Malzeme" value={stats.total_products} icon="📦" />
-            <StatCard
-              label="Düşük Stok"
-              value={stats.low_stock_count}
-              accent={stats.low_stock_count > 0 ? 'text-amber-600' : 'text-green-600'}
-              hint={stats.low_stock_count > 0 ? 'Tedarik gerekli' : 'Sorun yok'}
-              icon="⚠️"
-            />
-            <StatCard label="Stok Değeri" value={`${stats.total_stock_value.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`} icon="💎" />
-            <StatCard label="Şube" value={stats.total_warehouses} icon="🏪" />
-          </>
-        )}
+        <StatCard
+          label="Bugün Marj"
+          value={formatCurrency(todayMargin)}
+          tone="success"
+          icon="📈"
+          hint={todayRevenue > 0 ? `%${marginPct.toFixed(1)} oran` : '—'}
+        />
+        <StatCard label="14 Gün Ciro" value={formatCurrency(fortnightRev)} icon="📅" hint="Toplam" />
+        <StatCard
+          label="Bugün Zayiat"
+          value={formatCurrency(todayWaste)}
+          tone={todayWaste > 0 ? 'warning' : 'default'}
+          icon="🗑️"
+          hint={todayWaste > 0 ? 'İncelemeye değer' : 'Sorun yok'}
+        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <section className="card">
-          <h2 className="font-semibold mb-3">Şubelerin Bugünü</h2>
+      <Section
+        title="Son 14 Gün Cirosu"
+        description="Günlük gelir trendi"
+        actions={<Tag tone="brand">{formatCurrency(fortnightRev)}</Tag>}
+        className="mb-6"
+      >
+        {trend.length === 0 ? (
+          <EmptyState icon="📈" title="Henüz satış yok" description="İlk satışınızdan sonra trend burada belirir." />
+        ) : (
+          <Sparkline values={trend.map((p) => p.revenue)} labels={trend.map((p) => p.date)} />
+        )}
+      </Section>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <Section title="Şubelerin Bugünü" description="Bugünkü ciro performansı">
           {daily.length === 0 ? (
-            <p className="text-sm text-slate-500">Şube yok.</p>
+            <p className="text-sm text-ink-500">Şube tanımlı değil.</p>
           ) : (
             <BarChart
               rows={daily.map((d) => ({
                 label: d.warehouse_code ?? `#${d.warehouse_id}`,
                 value: d.revenue,
               }))}
-              formatValue={(n) => `${n.toFixed(0)} ₺`}
+              formatValue={(n) => formatCurrency(n, '₺', 0)}
             />
           )}
-        </section>
+        </Section>
 
-        <section className="card">
-          <h2 className="font-semibold mb-3">En Çok Çıkan 10 Malzeme</h2>
+        <Section title="En Çok Çıkan Malzeme" description="Son hareketlere göre">
           {top.length === 0 ? (
-            <p className="text-sm text-slate-500">
-              Henüz hareket yok. <a href="/sell" className="text-brand-700 hover:underline">İlk satışı yapın →</a>
-            </p>
+            <EmptyState icon="📦" title="Hareket yok" description="İlk satış veya stok girişinden sonra burası dolar." />
           ) : (
             <BarChart rows={top.map((p) => ({ label: p.name, value: p.units_moved }))} />
           )}
-        </section>
+        </Section>
       </div>
+
+      <Section title="Envanter Durumu" description="Stok özet metrikleri">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {!stats ? (
+            Array.from({ length: 4 }).map((_, i) => <StatCard key={i} label="" value="" loading />)
+          ) : (
+            <>
+              <StatCard label="Toplam Malzeme" value={stats.total_products} icon="📦" />
+              <StatCard
+                label="Düşük Stok"
+                value={stats.low_stock_count}
+                tone={stats.low_stock_count > 0 ? 'warning' : 'success'}
+                hint={stats.low_stock_count > 0 ? 'Tedarik gerekli' : 'Sorun yok'}
+                icon="⚠️"
+              />
+              <StatCard label="Stok Değeri" value={formatCurrency(stats.total_stock_value)} icon="💎" />
+              <StatCard label="Şube" value={stats.total_warehouses} icon="🏪" />
+            </>
+          )}
+        </div>
+      </Section>
     </>
   );
 }

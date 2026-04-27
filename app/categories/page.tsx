@@ -7,15 +7,18 @@ export default function CategoriesPage() {
   return (
     <SimpleCrud<Category>
       title="Kategoriler"
-      subtitle="Ürünleri kategorilere ayırın"
+      subtitle="Malzemeleri organize etmek için kategoriler (et, ekmek, sebze…)"
       endpoint="/categories/"
+      emptyIcon="🗂️"
+      emptyTitle="Kategori yok"
+      emptyDescription="Malzemelerinizi gruplandırmak için kategoriler oluşturun."
       columns={[
         { key: 'name', label: 'Ad' },
         { key: 'description', label: 'Açıklama' },
       ]}
       fields={[
-        { name: 'name', label: 'Ad', required: true },
-        { name: 'description', label: 'Açıklama' },
+        { name: 'name', label: 'Kategori Adı', required: true, placeholder: 'Et Ürünleri' },
+        { name: 'description', label: 'Açıklama', placeholder: 'Hamburger köftesi, sosis vs.' },
       ]}
     />
   );
