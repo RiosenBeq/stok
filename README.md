@@ -86,6 +86,33 @@ cd backend
 pytest -q          # 17 test, in-memory DB
 ```
 
+## Vercel Deploy
+
+Repo, Vercel monorepo desteğine uyumlu yapılandırılmıştır:
+
+- `vercel.json` → frontend build (`frontend/dist`) + serverless function
+- `api/[...path].py` → FastAPI ASGI app'ini Vercel Python runtime'a expose eder
+- `api/requirements.txt` → backend Python bağımlılıkları
+- `/_/backend/api/v1/*` → Vercel rewrite ile `/api/v1/*`'a yönlendirilir, catch-all serverless function'a düşer
+- Vercel'de SQLite `/tmp/stok.db`'ye düşer (tek yazılabilir alan)
+
+### Vercel proje ayarları
+1. Root Directory = `./` (vercel.json kökte)
+2. Framework Preset = Other
+3. Build/Install/Output komutları otomatik vercel.json'dan okunur
+
+### Production env değişkenleri
+| Anahtar | Açıklama |
+|---|---|
+| `SECRET_KEY` | 32+ karakter random; JWT imzası |
+| `DATABASE_URL` | Postgres URL (Neon, Supabase). SQLite serverless'da kalıcı değil. |
+| `FIRST_SUPERUSER_PASSWORD` | İlk admin şifresi |
+| `CORS_ORIGINS` | `["https://your-domain"]` JSON listesi |
+
+> ⚠️ **Serverless uyarısı**: SQLite Vercel'in `/tmp` dizinine yazar — fonksiyon
+> instance'ları ölünce veri kaybolur. Production'da `DATABASE_URL` ile yönetilen
+> bir Postgres bağlayın. Neon/Supabase'in ücretsiz katmanı yeterlidir.
+
 ## Önerilen Sonraki Adımlar
 
 Bu repo sağlam bir temel sunar; aşağıdaki yönlerde genişletilebilir:

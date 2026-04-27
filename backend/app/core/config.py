@@ -1,9 +1,17 @@
 """Application configuration loaded from environment variables."""
+import os
 from functools import lru_cache
 from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _default_database_url() -> str:
+    """SQLite default. On Vercel the only writable path is /tmp."""
+    if os.getenv("VERCEL"):
+        return "sqlite:////tmp/stok.db"
+    return "sqlite:///./stok.db"
 
 
 class Settings(BaseSettings):
@@ -24,7 +32,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    DATABASE_URL: str = "sqlite:///./stok.db"
+    DATABASE_URL: str = Field(default_factory=_default_database_url)
 
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
