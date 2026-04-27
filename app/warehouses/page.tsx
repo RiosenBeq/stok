@@ -6,18 +6,18 @@ import type { Warehouse } from '@/types/api';
 export default function WarehousesPage() {
   return (
     <SimpleCrud<Warehouse>
-      title="Depolar"
-      subtitle="Çoklu depo desteği için lokasyonları yönetin"
+      title="Şubeler"
+      subtitle="Franchise lokasyonları — her şubenin kendi stok defteri"
       endpoint="/warehouses/"
       columns={[
         { key: 'code', label: 'Kod' },
-        { key: 'name', label: 'Ad' },
+        { key: 'name', label: 'Şube Adı' },
         { key: 'location', label: 'Lokasyon' },
       ]}
       fields={[
-        { name: 'code', label: 'Kod', required: true },
-        { name: 'name', label: 'Ad', required: true },
-        { name: 'location', label: 'Lokasyon' },
+        { name: 'code', label: 'Kod (örn. ACAR-01)', required: true },
+        { name: 'name', label: 'Şube Adı', required: true },
+        { name: 'location', label: 'Adres / Lokasyon' },
       ]}
     />
   );

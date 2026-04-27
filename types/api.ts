@@ -90,3 +90,31 @@ export interface TopProduct {
   name: string;
   units_moved: number;
 }
+
+export interface RecipeItem {
+  id: number;
+  product_id: number;
+  quantity: number;
+  product_sku?: string | null;
+  product_name?: string | null;
+}
+
+export interface MenuItem {
+  id: number;
+  sku: string;
+  name: string;
+  description?: string | null;
+  price: number;
+  is_active: boolean;
+  recipe: RecipeItem[];
+}
+
+export interface FoodCostRow {
+  menu_item_id: number;
+  sku: string;
+  name: string;
+  price: number;
+  cost: number;
+  margin: number;
+  food_cost_pct: number;
+}

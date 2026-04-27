@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  /* iOS safe-area aware bottom padding for the mobile nav */
+  .pb-safe { padding-bottom: max(0.25rem, env(safe-area-inset-bottom)); }
+  /* Prevent iOS form-zoom on input focus */
+  input, select, textarea { font-size: 16px; }
+  @media (min-width: 768px) {
+    input, select, textarea { font-size: 14px; }
+  }
+}
+
 @layer components {
   .btn {
     @apply inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium

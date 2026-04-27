@@ -1,21 +1,25 @@
-# Stok — Gelişmiş Envanter & Stok Yönetim Sistemi
+# 🍔 Stok — Burger Franchise Envanter Sistemi
 
-Çoklu depo, rol tabanlı erişim ve akıllı stok hareket defteri ile çalışan açık kaynak bir
-envanter yönetim platformu. **Next.js 14 (App Router) + FastAPI + SQLAlchemy 2 + Tailwind**.
-Vercel'e tek tıkla deploy.
+Çoklu şube, reçete bazlı otomatik stok düşümü, hızlı satış ekranı ve zayiat takibi
+ile burger franchise zincirleri için tasarlanmış mobil-uyumlu envanter sistemi.
+**Next.js 14 + FastAPI + SQLAlchemy 2 + Tailwind**. Vercel-uyumlu.
 
 ## Öne Çıkan Özellikler
 
 | Alan | Detay |
 | --- | --- |
-| Kimlik Doğrulama | JWT access + refresh token, OAuth2 password flow |
-| Yetkilendirme | RBAC: `admin`, `manager`, `staff`, `viewer` (rütbe-bazlı) |
-| Katalog | Ürün, kategori (hiyerarşik), tedarikçi, çoklu depo |
-| Stok | Append-only ledger; IN/OUT/TRANSFER/ADJUSTMENT hareketleri |
-| Sipariş | Satınalma & satış siparişleri; onay/teslim akışları stoğu otomatik günceller |
-| Raporlama | Pano metrikleri, çok satanlar, stok değerlemesi |
+| Hızlı Satış | "Klasik Burger" gibi menü kalemine tek dokunuş — reçetedeki tüm malzemeler şubenin stoğundan otomatik düşer |
+| Reçete (BOM) | Menü kalemi başına malzeme + miktar; satışta atomik tüketim, yetersiz stokta engel |
+| Yiyecek Maliyeti | Anlık food-cost % raporu, fiyat/maliyet/marj/yüzde renkli rozetler |
+| Şubeler | Çoklu lokasyon — her şubenin bağımsız stok defteri, transfer desteği |
+| Zayiat / Fire | Bozulan/dökülen malzemeleri tek formdan stoktan düş, sebep notu |
+| Stok Defteri | Append-only `stock_movements`; IN/OUT/TRANSFER/ADJUSTMENT/WASTE |
+| Mobil | Bottom-nav, kart liste, full-screen modal, dokunma-dostu form girdileri |
+| Yetkilendirme | RBAC: `admin` / `manager` / `staff` / `viewer` |
+| Sipariş | Satınalma & satış siparişleri; onay/teslim akışı stoğu otomatik günceller |
+| Raporlama | Pano metrikleri, çok satanlar, stok değerlemesi, yiyecek maliyeti |
 | Denetim | Hassas işlemler için `audit_logs` tablosu |
-| Geliştirme | Pytest, in-memory test DB, GitHub Actions CI, Docker |
+| Geliştirme | 22 pytest testi yeşil, GitHub Actions CI, Docker, Vercel hazır |
 
 ## Hızlı Başlangıç
 

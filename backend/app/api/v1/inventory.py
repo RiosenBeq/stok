@@ -100,6 +100,38 @@ def transfer(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
 
 
+@router.post("/waste", response_model=StockMovementOut, status_code=status.HTTP_201_CREATED)
+def waste(
+    payload: StockMovementCreate,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_min_role(UserRole.STAFF)),
+) -> StockMovement:
+    """Record spoilage / waste. Same as OUT but tagged as WASTE for reporting."""
+    if payload.type != MovementType.OUT:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Zayiat hareketleri OUT türünde olmalı"
+        )
+    try:
+        mv = inv.record_movement(
+            db,
+            product_id=payload.product_id,
+            warehouse_id=payload.warehouse_id,
+            movement_type=MovementType.OUT,
+            quantity=payload.quantity,
+            reference="WASTE",
+            note=payload.note or "Zayiat",
+            user_id=actor.id,
+        )
+        db.commit()
+        return mv
+    except inv.InsufficientStockError as exc:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+
 @router.post("/adjust", response_model=StockMovementOut | None)
 def adjust(
     payload: AdjustmentCreate,

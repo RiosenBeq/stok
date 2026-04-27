@@ -3,12 +3,27 @@
 import { FormEvent, useEffect, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import Modal from '@/components/Modal';
+import { RowCard } from '@/components/ResponsiveCard';
 import { api } from '@/lib/api';
 import { toast } from '@/store/toast';
 import type { Product, StockMovement, Warehouse } from '@/types/api';
 
+const TYPE_BADGE: Record<string, string> = {
+  in: 'badge-green',
+  out: 'badge-red',
+  transfer: 'badge-slate',
+  adjustment: 'badge-amber',
+};
+
+const TYPE_LABEL: Record<string, string> = {
+  in: 'Giriş',
+  out: 'Çıkış',
+  transfer: 'Transfer',
+  adjustment: 'Düzeltme',
+};
+
 export default function MovementsPage() {
-  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [movements, setMovements] = useState<StockMovement[] | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [open, setOpen] = useState(false);
@@ -23,8 +38,11 @@ export default function MovementsPage() {
   });
 
   async function reload() {
-    const data = await api.get<StockMovement[]>('/inventory/movements?limit=200');
-    setMovements(data);
+    try {
+      setMovements(await api.get<StockMovement[]>('/inventory/movements?limit=200'));
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Yüklenemedi');
+    }
   }
 
   useEffect(() => {
@@ -77,57 +95,84 @@ export default function MovementsPage() {
         }
       />
 
-      <div className="card overflow-x-auto">
+      {/* Mobile: card list */}
+      <div className="md:hidden space-y-2">
+        {movements === null ? (
+          <div className="text-center text-slate-400 py-6">Yükleniyor…</div>
+        ) : movements.length === 0 ? (
+          <div className="text-center text-slate-400 py-10">Hareket yok.</div>
+        ) : (
+          movements.map((m) => (
+            <RowCard
+              key={m.id}
+              title={
+                <span className="flex items-center gap-2">
+                  <span className={TYPE_BADGE[m.type]}>{TYPE_LABEL[m.type]}</span>
+                  <span>{productMap.get(m.product_id)?.name ?? `#${m.product_id}`}</span>
+                </span>
+              }
+              subtitle={
+                <>
+                  {warehouseMap.get(m.warehouse_id)?.code ?? `#${m.warehouse_id}`} ·{' '}
+                  {new Date(m.created_at).toLocaleString('tr-TR')}
+                </>
+              }
+              meta={
+                <span
+                  className={`text-base font-semibold ${
+                    m.quantity < 0 ? 'text-red-600' : 'text-green-700'
+                  }`}
+                >
+                  {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
+                </span>
+              }
+              badges={
+                m.reference ? (
+                  <span className="text-xs text-slate-500">{m.reference}</span>
+                ) : null
+              }
+            />
+          ))
+        )}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block card overflow-x-auto">
         <table className="table">
           <thead>
             <tr>
               <th>Tarih</th>
               <th>Tür</th>
-              <th>Ürün</th>
-              <th>Depo</th>
+              <th>Malzeme</th>
+              <th>Şube</th>
               <th className="text-right">Miktar</th>
               <th>Referans</th>
               <th>Not</th>
             </tr>
           </thead>
           <tbody className="divide-y">
-            {movements.map((m) => {
-              const badge =
-                m.type === 'in'
-                  ? 'badge-green'
-                  : m.type === 'out'
-                  ? 'badge-red'
-                  : m.type === 'transfer'
-                  ? 'badge-slate'
-                  : 'badge-amber';
-              return (
-                <tr key={m.id}>
+            {movements === null ? (
+              <tr><td colSpan={7} className="text-center text-slate-400 py-6">Yükleniyor…</td></tr>
+            ) : movements.length === 0 ? (
+              <tr><td colSpan={7} className="text-center text-slate-400 py-6">Hareket yok.</td></tr>
+            ) : (
+              movements.map((m) => (
+                <tr key={m.id} className="hover:bg-slate-50">
                   <td className="text-slate-500 whitespace-nowrap">
                     {new Date(m.created_at).toLocaleString('tr-TR')}
                   </td>
-                  <td>
-                    <span className={badge}>{m.type}</span>
-                  </td>
+                  <td><span className={TYPE_BADGE[m.type]}>{TYPE_LABEL[m.type]}</span></td>
                   <td>{productMap.get(m.product_id)?.name ?? `#${m.product_id}`}</td>
                   <td>{warehouseMap.get(m.warehouse_id)?.code ?? `#${m.warehouse_id}`}</td>
-                  <td
-                    className={`text-right font-medium ${
-                      m.quantity < 0 ? 'text-red-600' : 'text-green-700'
-                    }`}
-                  >
+                  <td className={`text-right font-medium ${
+                    m.quantity < 0 ? 'text-red-600' : 'text-green-700'
+                  }`}>
                     {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
                   </td>
                   <td className="text-slate-500">{m.reference ?? '—'}</td>
                   <td className="text-slate-500">{m.note ?? '—'}</td>
                 </tr>
-              );
-            })}
-            {movements.length === 0 && (
-              <tr>
-                <td colSpan={7} className="text-center text-slate-400 py-6">
-                  Hareket yok.
-                </td>
-              </tr>
+              ))
             )}
           </tbody>
         </table>
@@ -137,71 +182,45 @@ export default function MovementsPage() {
         <form onSubmit={onSubmit} className="space-y-3">
           <div>
             <label className="label">Tür</label>
-            <select
-              className="input"
-              value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value as 'in' | 'out' })}
-            >
+            <select className="input" value={form.type}
+              onChange={(e) => setForm({ ...form, type: e.target.value as 'in' | 'out' })}>
               <option value="in">Giriş (IN)</option>
               <option value="out">Çıkış (OUT)</option>
             </select>
           </div>
           <div>
-            <label className="label">Ürün</label>
-            <select
-              className="input"
-              required
-              value={form.product_id}
-              onChange={(e) => setForm({ ...form, product_id: e.target.value })}
-            >
+            <label className="label">Malzeme</label>
+            <select className="input" required value={form.product_id}
+              onChange={(e) => setForm({ ...form, product_id: e.target.value })}>
               {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.sku} — {p.name}
-                </option>
+                <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="label">Depo</label>
-            <select
-              className="input"
-              required
-              value={form.warehouse_id}
-              onChange={(e) => setForm({ ...form, warehouse_id: e.target.value })}
-            >
+            <label className="label">Şube</label>
+            <select className="input" required value={form.warehouse_id}
+              onChange={(e) => setForm({ ...form, warehouse_id: e.target.value })}>
               {warehouses.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.code} — {w.name}
-                </option>
+                <option key={w.id} value={w.id}>{w.code} — {w.name}</option>
               ))}
             </select>
           </div>
           <div>
             <label className="label">Miktar</label>
-            <input
-              type="number"
-              min="1"
-              required
-              className="input"
+            <input type="number" inputMode="numeric" min="1" required className="input"
               value={form.quantity}
-              onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })}
-            />
+              onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} />
           </div>
           <div>
             <label className="label">Referans</label>
-            <input
-              className="input"
-              value={form.reference}
-              onChange={(e) => setForm({ ...form, reference: e.target.value })}
-            />
+            <input className="input" value={form.reference}
+              onChange={(e) => setForm({ ...form, reference: e.target.value })} />
           </div>
           <div>
             <label className="label">Not</label>
-            <input
-              className="input"
-              value={form.note}
-              onChange={(e) => setForm({ ...form, note: e.target.value })}
-            />
+            <input className="input" value={form.note}
+              onChange={(e) => setForm({ ...form, note: e.target.value })} />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>

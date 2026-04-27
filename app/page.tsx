@@ -75,7 +75,7 @@ export default function DashboardPage() {
               hint={stats.low_stock_count > 0 ? 'Aksiyon gerekli' : 'Sorun yok'}
               icon="⚠️"
             />
-            <StatCard label="Depolar" value={stats.total_warehouses} icon="🏭" />
+            <StatCard label="Şube" value={stats.total_warehouses} icon="🏪" />
             <StatCard label="Tedarikçiler" value={stats.total_suppliers} icon="🤝" />
             <StatCard
               label="Stok Değeri (₺)"
