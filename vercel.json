@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "rewrites": [
+    { "source": "/_/backend/api/:path*", "destination": "/api/:path*" }
+  ],
+  "functions": {
+    "api/[...path].py": {
+      "maxDuration": 30,
+      "includeFiles": "backend/**"
+    }
+  }
+}

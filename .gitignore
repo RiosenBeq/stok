@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# DB / data
+*.db
+*.sqlite3
+backend/stok.db
+
+# Next.js / Node
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Env / IDE
+.env
+.env*.local
+.idea/
+.vscode/
+.DS_Store
+
+# Vercel
+.vercel

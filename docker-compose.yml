@@ -1,0 +1,23 @@
+# Backend-only docker-compose. The frontend is now a Next.js app — run it with
+# `npm run dev` (local) or deploy to Vercel (production).
+services:
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: sqlite:////data/stok.db
+      SECRET_KEY: ${SECRET_KEY:-please-change-me-to-a-long-random-secret-key}
+      ENVIRONMENT: production
+      DEBUG: "false"
+      CORS_ORIGINS: '["http://localhost:3000"]'
+    volumes:
+      - backend_data:/data
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  backend_data:
