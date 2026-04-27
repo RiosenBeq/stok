@@ -3,36 +3,144 @@
 @tailwind utilities;
 
 @layer base {
-  /* iOS safe-area aware bottom padding for the mobile nav */
-  .pb-safe { padding-bottom: max(0.25rem, env(safe-area-inset-bottom)); }
-  /* Prevent iOS form-zoom on input focus */
+  :root {
+    --bg-app: #fafbfc;
+    --bg-card: #ffffff;
+  }
+
+  html { -webkit-text-size-adjust: 100%; }
+  body { font-family: theme('fontFamily.sans'); color: theme('colors.ink.800'); background: var(--bg-app); }
+
+  /* Prevent iOS focus zoom */
   input, select, textarea { font-size: 16px; }
   @media (min-width: 768px) {
     input, select, textarea { font-size: 14px; }
   }
+
+  /* Better focus rings */
+  *:focus-visible {
+    outline: 2px solid theme('colors.brand.500');
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+  }
+  button:focus-visible, a:focus-visible { outline-offset: 3px; }
+
+  /* Safe area aware bottom padding */
+  .pb-safe { padding-bottom: max(0.25rem, env(safe-area-inset-bottom)); }
+
+  /* Tabular numbers for currency/columns */
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+
+  /* Scrollbar polish */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: theme('colors.ink.200'); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: theme('colors.ink.300'); }
 }
 
 @layer components {
+  /* ─── Buttons ──────────────────────────────────────────── */
   .btn {
-    @apply inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium
-           transition focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg font-medium
+           transition-all duration-150 ease-out
+           focus:outline-none focus:ring-2 focus:ring-offset-1
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+           active:scale-[0.98] select-none whitespace-nowrap;
   }
-  .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
-  .btn-secondary { @apply btn bg-white border border-slate-300 text-slate-800 hover:bg-slate-50; }
-  .btn-danger { @apply btn bg-red-600 text-white hover:bg-red-700; }
+  .btn-sm  { @apply text-xs px-2.5 py-1.5; }
+  .btn-md  { @apply text-sm px-3.5 py-2; }
+  .btn-lg  { @apply text-base px-4 py-2.5; }
 
-  .input {
-    @apply block w-full rounded-md border border-slate-300 px-3 py-2 text-sm
-           focus:border-brand-500 focus:ring-1 focus:ring-brand-500;
+  .btn-primary {
+    @apply btn btn-md bg-brand-600 text-white shadow-soft
+           hover:bg-brand-700 hover:shadow-glow focus:ring-brand-300;
   }
-  .label { @apply mb-1 block text-sm font-medium text-slate-700; }
-  .card { @apply rounded-lg bg-white shadow-sm ring-1 ring-slate-200 p-4; }
-  .table { @apply min-w-full divide-y divide-slate-200 text-sm; }
-  .table th { @apply bg-slate-50 px-4 py-2 text-left font-semibold text-slate-700; }
-  .table td { @apply px-4 py-2 text-slate-700; }
-  .badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium; }
-  .badge-green { @apply badge bg-green-100 text-green-800; }
-  .badge-red   { @apply badge bg-red-100 text-red-800; }
-  .badge-amber { @apply badge bg-amber-100 text-amber-800; }
-  .badge-slate { @apply badge bg-slate-100 text-slate-800; }
+  .btn-secondary {
+    @apply btn btn-md bg-white border border-ink-200 text-ink-800
+           hover:bg-ink-50 hover:border-ink-300 focus:ring-ink-200;
+  }
+  .btn-ghost {
+    @apply btn btn-md text-ink-700 hover:bg-ink-100 focus:ring-ink-200;
+  }
+  .btn-danger {
+    @apply btn btn-md bg-red-600 text-white shadow-soft
+           hover:bg-red-700 focus:ring-red-300;
+  }
+
+  /* ─── Inputs ───────────────────────────────────────────── */
+  .input {
+    @apply block w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm
+           text-ink-900 placeholder:text-ink-400
+           transition-colors duration-150
+           focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none
+           disabled:bg-ink-50 disabled:text-ink-500;
+  }
+  .input-error {
+    @apply border-red-300 focus:border-red-500 focus:ring-red-100;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium text-ink-700 uppercase tracking-wide;
+  }
+  .helper { @apply text-xs text-ink-500 mt-1; }
+  .error  { @apply text-xs text-red-600 mt-1; }
+
+  /* ─── Card / Section ────────────────────────────────────── */
+  .card {
+    @apply rounded-xl bg-[var(--bg-card)] shadow-card ring-1 ring-ink-100 p-4;
+  }
+  .card-elevated {
+    @apply rounded-xl bg-[var(--bg-card)] shadow-pop ring-1 ring-ink-100 p-4;
+  }
+  .card-interactive {
+    @apply card transition-all duration-150 hover:shadow-pop hover:ring-brand-200
+           cursor-pointer active:scale-[0.99];
+  }
+  .section-title {
+    @apply text-sm font-semibold text-ink-900 uppercase tracking-wide;
+  }
+
+  /* ─── Tables ──────────────────────────────────────────── */
+  .table {
+    @apply min-w-full divide-y divide-ink-100 text-sm;
+  }
+  .table thead th {
+    @apply bg-ink-50 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-ink-600;
+  }
+  .table tbody td {
+    @apply px-4 py-2.5 text-ink-700;
+  }
+  .table tbody tr {
+    @apply transition-colors hover:bg-ink-50/60;
+  }
+
+  /* ─── Badges ──────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset;
+  }
+  .badge-green { @apply badge bg-green-50 text-green-700 ring-green-200; }
+  .badge-red   { @apply badge bg-red-50 text-red-700 ring-red-200; }
+  .badge-amber { @apply badge bg-amber-50 text-amber-700 ring-amber-200; }
+  .badge-blue  { @apply badge bg-blue-50 text-blue-700 ring-blue-200; }
+  .badge-slate { @apply badge bg-ink-50 text-ink-700 ring-ink-200; }
+  .badge-brand { @apply badge bg-brand-50 text-brand-700 ring-brand-200; }
+
+  /* ─── Skeleton loaders ─────────────────────────────────── */
+  .skeleton {
+    @apply rounded bg-ink-100;
+    background: linear-gradient(90deg, theme('colors.ink.100') 0%, theme('colors.ink.200') 50%, theme('colors.ink.100') 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+
+  /* ─── Page heading ─────────────────────────────────────── */
+  .h-page { @apply text-2xl md:text-3xl font-semibold tracking-tight text-ink-900; }
+  .h-section { @apply text-lg font-semibold text-ink-900; }
+
+  /* ─── Kbd ──────────────────────────────────────────────── */
+  .kbd {
+    @apply inline-flex items-center text-[11px] font-mono px-1.5 py-0.5
+           rounded border border-ink-200 bg-white text-ink-600 shadow-sm;
+  }
+
+  /* ─── Page transitions ─────────────────────────────────── */
+  .page-fade { animation: fadeIn 200ms ease-out both; }
 }

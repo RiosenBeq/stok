@@ -1,18 +1,23 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import Modal from '@/components/Modal';
-import { RowCard } from '@/components/ResponsiveCard';
+import EmptyState from '@/components/ui/EmptyState';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import FilterChip from '@/components/ui/FilterChip';
+import Tag from '@/components/ui/Tag';
 import { api } from '@/lib/api';
 import { toast } from '@/store/toast';
-import type { Product, StockMovement, Warehouse } from '@/types/api';
+import { formatDateTime, formatRelativeTime } from '@/lib/format';
+import type { MovementType, Product, StockMovement, Warehouse } from '@/types/api';
 
-const TYPE_BADGE: Record<string, string> = {
-  in: 'badge-green',
-  out: 'badge-red',
-  transfer: 'badge-slate',
-  adjustment: 'badge-amber',
+const TYPE_TONE: Record<string, 'green' | 'red' | 'slate' | 'amber'> = {
+  in: 'green',
+  out: 'red',
+  transfer: 'slate',
+  adjustment: 'amber',
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -22,10 +27,13 @@ const TYPE_LABEL: Record<string, string> = {
   adjustment: 'Düzeltme',
 };
 
+type Filter = 'all' | MovementType;
+
 export default function MovementsPage() {
   const [movements, setMovements] = useState<StockMovement[] | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [filter, setFilter] = useState<Filter>('all');
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -58,6 +66,23 @@ export default function MovementsPage() {
     reload();
   }, []);
 
+  const filtered = useMemo(() => {
+    if (!movements) return null;
+    if (filter === 'all') return movements;
+    return movements.filter((m) => m.type === filter);
+  }, [movements, filter]);
+
+  const counts = useMemo(() => {
+    const list = movements ?? [];
+    return {
+      all: list.length,
+      in: list.filter((m) => m.type === 'in').length,
+      out: list.filter((m) => m.type === 'out').length,
+      transfer: list.filter((m) => m.type === 'transfer').length,
+      adjustment: list.filter((m) => m.type === 'adjustment').length,
+    };
+  }, [movements]);
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -87,57 +112,64 @@ export default function MovementsPage() {
     <>
       <PageHeader
         title="Stok Hareketleri"
-        subtitle="Giriş, çıkış, transfer ve düzeltme kayıtları"
-        actions={
-          <button className="btn-primary" onClick={() => setOpen(true)}>
-            + Yeni Hareket
-          </button>
-        }
+        subtitle="Giriş, çıkış, transfer ve düzeltme defteri"
+        actions={<Button onClick={() => setOpen(true)} iconLeft={<span>+</span>}>Yeni Hareket</Button>}
       />
 
-      {/* Mobile: card list */}
+      <div className="card mb-4">
+        <div className="flex flex-wrap gap-2">
+          <FilterChip active={filter === 'all'} onClick={() => setFilter('all')} count={counts.all}>Tümü</FilterChip>
+          <FilterChip active={filter === 'in'} onClick={() => setFilter('in')} count={counts.in}>📥 Giriş</FilterChip>
+          <FilterChip active={filter === 'out'} onClick={() => setFilter('out')} count={counts.out}>📤 Çıkış</FilterChip>
+          <FilterChip active={filter === 'transfer'} onClick={() => setFilter('transfer')} count={counts.transfer}>🔄 Transfer</FilterChip>
+          <FilterChip active={filter === 'adjustment'} onClick={() => setFilter('adjustment')} count={counts.adjustment}>⚙️ Düzeltme</FilterChip>
+        </div>
+      </div>
+
+      {/* Mobile timeline */}
       <div className="md:hidden space-y-2">
-        {movements === null ? (
-          <div className="text-center text-slate-400 py-6">Yükleniyor…</div>
-        ) : movements.length === 0 ? (
-          <div className="text-center text-slate-400 py-10">Hareket yok.</div>
+        {filtered === null ? (
+          Array.from({ length: 5 }).map((_, i) => <div key={i} className="card skeleton h-16" />)
+        ) : filtered.length === 0 ? (
+          <EmptyState icon="🔄" title="Hareket yok" description="İlk hareketi ekleyerek başlayın." action={<Button onClick={() => setOpen(true)}>+ Yeni Hareket</Button>} />
         ) : (
-          movements.map((m) => (
-            <RowCard
-              key={m.id}
-              title={
-                <span className="flex items-center gap-2">
-                  <span className={TYPE_BADGE[m.type]}>{TYPE_LABEL[m.type]}</span>
-                  <span>{productMap.get(m.product_id)?.name ?? `#${m.product_id}`}</span>
-                </span>
-              }
-              subtitle={
-                <>
-                  {warehouseMap.get(m.warehouse_id)?.code ?? `#${m.warehouse_id}`} ·{' '}
-                  {new Date(m.created_at).toLocaleString('tr-TR')}
-                </>
-              }
-              meta={
-                <span
-                  className={`text-base font-semibold ${
-                    m.quantity < 0 ? 'text-red-600' : 'text-green-700'
-                  }`}
-                >
-                  {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
-                </span>
-              }
-              badges={
-                m.reference ? (
-                  <span className="text-xs text-slate-500">{m.reference}</span>
-                ) : null
-              }
-            />
-          ))
+          filtered.map((m) => {
+            const product = productMap.get(m.product_id);
+            const wh = warehouseMap.get(m.warehouse_id);
+            return (
+              <div key={m.id} className="card animate-slide-up">
+                <div className="flex items-start gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0
+                    ${m.quantity < 0 ? 'bg-red-50' : 'bg-green-50'}`}>
+                    {m.quantity < 0 ? '📤' : '📥'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <Tag tone={TYPE_TONE[m.type]}>{TYPE_LABEL[m.type]}</Tag>
+                      <span className={`text-base font-bold tabular-nums ${m.quantity < 0 ? 'text-red-600' : 'text-green-700'}`}>
+                        {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
+                      </span>
+                    </div>
+                    <div className="font-medium text-ink-900 truncate">{product?.name ?? `#${m.product_id}`}</div>
+                    <div className="text-xs text-ink-500 mt-0.5">
+                      🏪 {wh?.code ?? `#${m.warehouse_id}`} · {formatRelativeTime(m.created_at)}
+                    </div>
+                    {(m.reference || m.note) && (
+                      <div className="mt-1.5 text-xs text-ink-600 truncate">
+                        {m.reference && <span className="font-mono mr-2">{m.reference}</span>}
+                        {m.note}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
 
-      {/* Desktop: table */}
-      <div className="hidden md:block card overflow-x-auto">
+      {/* Desktop table */}
+      <div className="hidden md:block card overflow-x-auto p-0">
         <table className="table">
           <thead>
             <tr>
@@ -150,27 +182,30 @@ export default function MovementsPage() {
               <th>Not</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
-            {movements === null ? (
-              <tr><td colSpan={7} className="text-center text-slate-400 py-6">Yükleniyor…</td></tr>
-            ) : movements.length === 0 ? (
-              <tr><td colSpan={7} className="text-center text-slate-400 py-6">Hareket yok.</td></tr>
+          <tbody className="divide-y divide-ink-100">
+            {filtered === null ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i}><td colSpan={7}><div className="skeleton h-6 w-full" /></td></tr>
+              ))
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={7} className="py-12">
+                <EmptyState icon="🔄" title="Hareket yok" description="İlk hareketi ekleyerek başlayın." />
+              </td></tr>
             ) : (
-              movements.map((m) => (
-                <tr key={m.id} className="hover:bg-slate-50">
-                  <td className="text-slate-500 whitespace-nowrap">
-                    {new Date(m.created_at).toLocaleString('tr-TR')}
+              filtered.map((m) => (
+                <tr key={m.id}>
+                  <td className="text-ink-500 whitespace-nowrap text-xs">
+                    <div>{formatDateTime(m.created_at)}</div>
+                    <div className="text-[10px]">{formatRelativeTime(m.created_at)}</div>
                   </td>
-                  <td><span className={TYPE_BADGE[m.type]}>{TYPE_LABEL[m.type]}</span></td>
-                  <td>{productMap.get(m.product_id)?.name ?? `#${m.product_id}`}</td>
-                  <td>{warehouseMap.get(m.warehouse_id)?.code ?? `#${m.warehouse_id}`}</td>
-                  <td className={`text-right font-medium ${
-                    m.quantity < 0 ? 'text-red-600' : 'text-green-700'
-                  }`}>
+                  <td><Tag tone={TYPE_TONE[m.type]}>{TYPE_LABEL[m.type]}</Tag></td>
+                  <td className="font-medium text-ink-900">{productMap.get(m.product_id)?.name ?? `#${m.product_id}`}</td>
+                  <td className="text-ink-600">{warehouseMap.get(m.warehouse_id)?.code ?? `#${m.warehouse_id}`}</td>
+                  <td className={`text-right font-semibold tabular-nums ${m.quantity < 0 ? 'text-red-600' : 'text-green-700'}`}>
                     {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
                   </td>
-                  <td className="text-slate-500">{m.reference ?? '—'}</td>
-                  <td className="text-slate-500">{m.note ?? '—'}</td>
+                  <td className="text-ink-500 font-mono text-xs">{m.reference ?? '—'}</td>
+                  <td className="text-ink-500">{m.note ?? '—'}</td>
                 </tr>
               ))
             )}
@@ -182,53 +217,42 @@ export default function MovementsPage() {
         <form onSubmit={onSubmit} className="space-y-3">
           <div>
             <label className="label">Tür</label>
-            <select className="input" value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value as 'in' | 'out' })}>
-              <option value="in">Giriş (IN)</option>
-              <option value="out">Çıkış (OUT)</option>
-            </select>
+            <div className="grid grid-cols-2 gap-2">
+              {(['in', 'out'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setForm({ ...form, type: t })}
+                  className={`py-3 rounded-lg border-2 text-sm font-medium transition-all
+                    ${form.type === t
+                      ? t === 'in' ? 'bg-green-50 border-green-500 text-green-700' : 'bg-red-50 border-red-500 text-red-700'
+                      : 'bg-white border-ink-200 text-ink-600 hover:border-ink-300'}`}
+                >
+                  {t === 'in' ? '📥 Giriş (IN)' : '📤 Çıkış (OUT)'}
+                </button>
+              ))}
+            </div>
           </div>
           <div>
             <label className="label">Malzeme</label>
-            <select className="input" required value={form.product_id}
-              onChange={(e) => setForm({ ...form, product_id: e.target.value })}>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>
-              ))}
+            <select className="input" required value={form.product_id} onChange={(e) => setForm({ ...form, product_id: e.target.value })}>
+              {products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}
             </select>
           </div>
           <div>
             <label className="label">Şube</label>
-            <select className="input" required value={form.warehouse_id}
-              onChange={(e) => setForm({ ...form, warehouse_id: e.target.value })}>
-              {warehouses.map((w) => (
-                <option key={w.id} value={w.id}>{w.code} — {w.name}</option>
-              ))}
+            <select className="input" required value={form.warehouse_id} onChange={(e) => setForm({ ...form, warehouse_id: e.target.value })}>
+              {warehouses.map((w) => <option key={w.id} value={w.id}>{w.code} — {w.name}</option>)}
             </select>
           </div>
-          <div>
-            <label className="label">Miktar</label>
-            <input type="number" inputMode="numeric" min="1" required className="input"
-              value={form.quantity}
-              onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} />
-          </div>
-          <div>
-            <label className="label">Referans</label>
-            <input className="input" value={form.reference}
-              onChange={(e) => setForm({ ...form, reference: e.target.value })} />
-          </div>
-          <div>
-            <label className="label">Not</label>
-            <input className="input" value={form.note}
-              onChange={(e) => setForm({ ...form, note: e.target.value })} />
-          </div>
+          <Input label="Miktar" type="number" inputMode="numeric" min={1} required
+            value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} />
+          <Input label="Referans" placeholder="Sipariş kodu, vb." value={form.reference}
+            onChange={(e) => setForm({ ...form, reference: e.target.value })} />
+          <Input label="Not" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>
-              Vazgeç
-            </button>
-            <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? 'Kaydediliyor…' : 'Kaydet'}
-            </button>
+            <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Vazgeç</Button>
+            <Button type="submit" loading={saving}>Kaydet</Button>
           </div>
         </form>
       </Modal>

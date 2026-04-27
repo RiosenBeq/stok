@@ -5,12 +5,19 @@ import PageHeader from '@/components/PageHeader';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { RowCard } from '@/components/ResponsiveCard';
+import EmptyState from '@/components/ui/EmptyState';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import FilterChip from '@/components/ui/FilterChip';
+import Tag from '@/components/ui/Tag';
 import { api } from '@/lib/api';
 import { toast } from '@/store/toast';
+import { formatCurrency } from '@/lib/format';
 import type { Category, ProductWithStock, Supplier } from '@/types/api';
 
 type SortKey = 'sku' | 'name' | 'on_hand' | 'cost_price' | 'sale_price';
 type SortDir = 'asc' | 'desc';
+type Filter = 'all' | 'low' | 'out' | 'inactive';
 
 interface FormState {
   sku: string;
@@ -39,9 +46,10 @@ const EMPTY_FORM: FormState = {
 };
 
 function StatusBadge({ p }: { p: ProductWithStock }) {
-  if (!p.is_active) return <span className="badge-slate">Pasif</span>;
-  if (p.is_low_stock) return <span className="badge-amber">Düşük</span>;
-  return <span className="badge-green">Yeterli</span>;
+  if (!p.is_active) return <Tag tone="slate">Pasif</Tag>;
+  if (p.on_hand === 0) return <Tag tone="red">Tükendi</Tag>;
+  if (p.is_low_stock) return <Tag tone="amber">Düşük</Tag>;
+  return <Tag tone="green">Yeterli</Tag>;
 }
 
 export default function ProductsPage() {
@@ -49,7 +57,7 @@ export default function ProductsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [search, setSearch] = useState('');
-  const [lowOnly, setLowOnly] = useState(false);
+  const [filter, setFilter] = useState<Filter>('all');
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [open, setOpen] = useState(false);
@@ -59,10 +67,9 @@ export default function ProductsPage() {
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
 
   async function reload() {
-    const params = new URLSearchParams();
-    if (search) params.set('q', search);
-    if (lowOnly) params.set('low_stock_only', 'true');
     try {
+      const params = new URLSearchParams();
+      if (search) params.set('q', search);
       setItems(await api.get<ProductWithStock[]>(`/products/?${params.toString()}`));
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Yüklenemedi');
@@ -71,10 +78,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     Promise.all([api.get<Category[]>('/categories/'), api.get<Supplier[]>('/suppliers/')])
-      .then(([c, s]) => {
-        setCategories(c);
-        setSuppliers(s);
-      })
+      .then(([c, s]) => { setCategories(c); setSuppliers(s); })
       .catch(() => {/* non-fatal */});
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -84,25 +88,42 @@ export default function ProductsPage() {
     const t = setTimeout(reload, 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, lowOnly]);
+  }, [search]);
 
-  function openNew() {
-    setEditing(null);
-    setForm(EMPTY_FORM);
-    setOpen(true);
-  }
+  const counts = useMemo(() => {
+    const list = items ?? [];
+    return {
+      all: list.length,
+      low: list.filter((p) => p.is_active && p.is_low_stock && p.on_hand > 0).length,
+      out: list.filter((p) => p.is_active && p.on_hand === 0).length,
+      inactive: list.filter((p) => !p.is_active).length,
+    };
+  }, [items]);
 
+  const filtered = useMemo(() => {
+    if (!items) return null;
+    let arr = items;
+    if (filter === 'low') arr = arr.filter((p) => p.is_active && p.is_low_stock && p.on_hand > 0);
+    else if (filter === 'out') arr = arr.filter((p) => p.is_active && p.on_hand === 0);
+    else if (filter === 'inactive') arr = arr.filter((p) => !p.is_active);
+    arr = [...arr].sort((a, b) => {
+      const av = (a as unknown as Record<string, unknown>)[sortKey];
+      const bv = (b as unknown as Record<string, unknown>)[sortKey];
+      if (typeof av === 'number' && typeof bv === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+      return sortDir === 'asc'
+        ? String(av ?? '').localeCompare(String(bv ?? ''), 'tr')
+        : String(bv ?? '').localeCompare(String(av ?? ''), 'tr');
+    });
+    return arr;
+  }, [items, filter, sortKey, sortDir]);
+
+  function openNew() { setEditing(null); setForm(EMPTY_FORM); setOpen(true); }
   function openEdit(p: ProductWithStock) {
     setEditing(p);
     setForm({
-      sku: p.sku,
-      barcode: p.barcode ?? '',
-      name: p.name,
-      unit: p.unit,
-      cost_price: Number(p.cost_price),
-      sale_price: Number(p.sale_price),
-      tax_rate: Number(p.tax_rate),
-      low_stock_threshold: p.low_stock_threshold,
+      sku: p.sku, barcode: p.barcode ?? '', name: p.name, unit: p.unit,
+      cost_price: Number(p.cost_price), sale_price: Number(p.sale_price),
+      tax_rate: Number(p.tax_rate), low_stock_threshold: p.low_stock_threshold,
       category_id: p.category_id == null ? '' : String(p.category_id),
       supplier_id: p.supplier_id == null ? '' : String(p.supplier_id),
     });
@@ -147,38 +168,18 @@ export default function ProductsPage() {
   }
 
   function toggleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortKey(key);
-      setSortDir('asc');
-    }
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir('asc'); }
   }
-
-  const sorted = useMemo(() => {
-    if (!items) return null;
-    const arr = [...items];
-    arr.sort((a, b) => {
-      const av = (a as unknown as Record<string, unknown>)[sortKey];
-      const bv = (b as unknown as Record<string, unknown>)[sortKey];
-      if (typeof av === 'number' && typeof bv === 'number') {
-        return sortDir === 'asc' ? av - bv : bv - av;
-      }
-      const as = String(av ?? '');
-      const bs = String(bv ?? '');
-      return sortDir === 'asc' ? as.localeCompare(bs, 'tr') : bs.localeCompare(as, 'tr');
-    });
-    return arr;
-  }, [items, sortKey, sortDir]);
 
   function SortHeader({ k, label, align = 'left' }: { k: SortKey; label: string; align?: 'left' | 'right' }) {
     const arrow = sortKey === k ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
     return (
       <th
-        className={`cursor-pointer select-none hover:bg-slate-100 ${align === 'right' ? 'text-right' : ''}`}
         onClick={() => toggleSort(k)}
+        className={`cursor-pointer select-none hover:bg-ink-100 ${align === 'right' ? 'text-right' : ''}`}
       >
-        {label}{arrow}
+        <span className={`${sortKey === k ? 'text-brand-700' : ''}`}>{label}{arrow}</span>
       </th>
     );
   }
@@ -189,42 +190,38 @@ export default function ProductsPage() {
         title="Stok / Malzeme"
         subtitle="Hammadde ve ambalaj kalemleri (köfte, ekmek, bardak…)"
         actions={
-          <button className="btn-primary" onClick={openNew}>
-            + Yeni Malzeme
-          </button>
+          <Button onClick={openNew} iconLeft={<span>+</span>}>Yeni Malzeme</Button>
         }
       />
 
-      <div className="card mb-4 flex flex-wrap gap-3 items-center">
-        <input
-          className="input flex-1 min-w-[180px] max-w-xs"
-          placeholder="SKU / barkod / isim ara…"
+      <div className="card mb-4 space-y-3">
+        <Input
+          iconLeft={<span>🔍</span>}
+          placeholder="SKU / barkod / ad ara…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={lowOnly}
-            onChange={(e) => setLowOnly(e.target.checked)}
-          />
-          Sadece düşük stok
-        </label>
-        {items && (
-          <span className="text-xs text-slate-500 ml-auto">{items.length} kayıt</span>
-        )}
+        <div className="flex flex-wrap gap-2">
+          <FilterChip active={filter === 'all'} onClick={() => setFilter('all')} count={counts.all}>Tümü</FilterChip>
+          <FilterChip active={filter === 'low'} onClick={() => setFilter('low')} count={counts.low}>⚠️ Düşük</FilterChip>
+          <FilterChip active={filter === 'out'} onClick={() => setFilter('out')} count={counts.out}>🔴 Tükendi</FilterChip>
+          <FilterChip active={filter === 'inactive'} onClick={() => setFilter('inactive')} count={counts.inactive}>Pasif</FilterChip>
+        </div>
       </div>
 
-      {/* Mobile: card list */}
+      {/* Mobile cards */}
       <div className="md:hidden space-y-2">
-        {sorted === null ? (
-          <div className="text-center text-slate-400 py-6">Yükleniyor…</div>
-        ) : sorted.length === 0 ? (
-          <div className="text-center text-slate-400 py-10">
-            {search || lowOnly ? 'Filtreyle eşleşen yok.' : '+ Yeni Malzeme ile başlayın.'}
-          </div>
+        {filtered === null ? (
+          Array.from({ length: 4 }).map((_, i) => <div key={i} className="card skeleton h-20" />)
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon="📦"
+            title={search || filter !== 'all' ? 'Eşleşen malzeme yok' : 'Henüz malzeme yok'}
+            description={search || filter !== 'all' ? 'Filtreleri temizlemeyi deneyin.' : 'Stok kayıtlarınızla başlayın.'}
+            action={!search && filter === 'all' && <Button onClick={openNew}>+ İlk malzemeyi ekle</Button>}
+          />
         ) : (
-          sorted.map((p) => (
+          filtered.map((p) => (
             <RowCard
               key={p.id}
               title={p.name}
@@ -232,25 +229,17 @@ export default function ProductsPage() {
               meta={
                 <div className="flex items-center gap-3 text-xs">
                   <span>
-                    Stok: <strong className="text-slate-900">{p.on_hand}</strong>
-                    <span className="text-slate-400"> / eşik {p.low_stock_threshold}</span>
+                    Stok: <strong className="text-ink-900 tabular-nums">{p.on_hand}</strong>
+                    <span className="text-ink-400"> / {p.low_stock_threshold}</span>
                   </span>
-                  <span>
-                    Maliyet: <strong>{Number(p.cost_price).toFixed(2)} ₺</strong>
-                  </span>
+                  <span>Maliyet: <strong className="tabular-nums">{formatCurrency(Number(p.cost_price))}</strong></span>
                 </div>
               }
               badges={<StatusBadge p={p} />}
               actions={
                 <>
-                  <button onClick={() => openEdit(p)} className="text-brand-700">
-                    Düzenle
-                  </button>
-                  {p.is_active && (
-                    <button onClick={() => setConfirmingId(p.id)} className="text-red-600">
-                      Sil
-                    </button>
-                  )}
+                  <button onClick={() => openEdit(p)} className="text-brand-700">Düzenle</button>
+                  {p.is_active && <button onClick={() => setConfirmingId(p.id)} className="text-red-600">Sil</button>}
                 </>
               }
             />
@@ -258,8 +247,8 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* Desktop: table */}
-      <div className="hidden md:block card overflow-x-auto">
+      {/* Desktop table */}
+      <div className="hidden md:block card overflow-x-auto p-0">
         <table className="table">
           <thead>
             <tr>
@@ -274,39 +263,38 @@ export default function ProductsPage() {
               <th className="w-28 text-right">İşlem</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
-            {sorted === null ? (
+          <tbody className="divide-y divide-ink-100">
+            {filtered === null ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <tr key={i}>
+                  <td colSpan={9}><div className="skeleton h-6 w-full" /></td>
+                </tr>
+              ))
+            ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={9} className="text-center text-slate-400 py-6">
-                  Yükleniyor…
-                </td>
-              </tr>
-            ) : sorted.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="text-center text-slate-400 py-10">
-                  {search || lowOnly ? 'Filtreyle eşleşen yok.' : 'Henüz malzeme yok.'}
+                <td colSpan={9} className="py-12">
+                  <EmptyState
+                    icon="📦"
+                    title={search || filter !== 'all' ? 'Eşleşen malzeme yok' : 'Henüz malzeme yok'}
+                    description={search || filter !== 'all' ? 'Filtreleri temizleyin.' : 'Stok kayıtlarınızla başlayın.'}
+                    action={!search && filter === 'all' && <Button onClick={openNew}>+ Yeni Malzeme</Button>}
+                  />
                 </td>
               </tr>
             ) : (
-              sorted.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-50">
-                  <td className="font-mono">{p.sku}</td>
-                  <td>{p.name}</td>
-                  <td>{categories.find((c) => c.id === p.category_id)?.name ?? '—'}</td>
-                  <td className="text-right">{p.on_hand}</td>
-                  <td className="text-right text-slate-500">{p.low_stock_threshold}</td>
-                  <td className="text-right">{Number(p.cost_price).toFixed(2)}</td>
-                  <td className="text-right">{Number(p.sale_price).toFixed(2)}</td>
+              filtered.map((p) => (
+                <tr key={p.id}>
+                  <td className="font-mono text-xs text-ink-600">{p.sku}</td>
+                  <td className="font-medium text-ink-900">{p.name}</td>
+                  <td className="text-ink-600">{categories.find((c) => c.id === p.category_id)?.name ?? '—'}</td>
+                  <td className="text-right tabular-nums font-medium">{p.on_hand}</td>
+                  <td className="text-right text-ink-500 tabular-nums">{p.low_stock_threshold}</td>
+                  <td className="text-right tabular-nums">{Number(p.cost_price).toFixed(2)}</td>
+                  <td className="text-right tabular-nums">{Number(p.sale_price).toFixed(2)}</td>
                   <td><StatusBadge p={p} /></td>
                   <td className="text-right whitespace-nowrap">
-                    <button onClick={() => openEdit(p)} className="text-brand-700 hover:underline mr-3 text-xs">
-                      Düzenle
-                    </button>
-                    {p.is_active && (
-                      <button onClick={() => setConfirmingId(p.id)} className="text-red-600 hover:underline text-xs">
-                        Sil
-                      </button>
-                    )}
+                    <button onClick={() => openEdit(p)} className="text-brand-700 hover:underline mr-3 text-xs">Düzenle</button>
+                    {p.is_active && <button onClick={() => setConfirmingId(p.id)} className="text-red-600 hover:underline text-xs">Sil</button>}
                   </td>
                 </tr>
               ))
@@ -322,68 +310,37 @@ export default function ProductsPage() {
         size="lg"
       >
         <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="label">SKU *</label>
-            <input className="input" required value={form.sku}
-              onChange={(e) => setForm({ ...form, sku: e.target.value })} />
-          </div>
-          <div>
-            <label className="label">Barkod</label>
-            <input className="input" value={form.barcode}
-              onChange={(e) => setForm({ ...form, barcode: e.target.value })} />
-          </div>
+          <Input label="SKU" required value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
+          <Input label="Barkod" value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} />
           <div className="md:col-span-2">
-            <label className="label">Malzeme Adı *</label>
-            <input className="input" required value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <Input label="Malzeme Adı" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
           <div>
             <label className="label">Kategori</label>
-            <select className="input" value={form.category_id}
-              onChange={(e) => setForm({ ...form, category_id: e.target.value })}>
+            <select className="input" value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })}>
               <option value="">—</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>
             <label className="label">Tedarikçi</label>
-            <select className="input" value={form.supplier_id}
-              onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}>
+            <select className="input" value={form.supplier_id} onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}>
               <option value="">—</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
-          <div>
-            <label className="label">Maliyet (₺)</label>
-            <input type="number" inputMode="decimal" step="0.01" min="0" className="input"
-              value={form.cost_price}
-              onChange={(e) => setForm({ ...form, cost_price: Number(e.target.value) })} />
-          </div>
-          <div>
-            <label className="label">Satış Fiyatı (₺)</label>
-            <input type="number" inputMode="decimal" step="0.01" min="0" className="input"
-              value={form.sale_price}
-              onChange={(e) => setForm({ ...form, sale_price: Number(e.target.value) })} />
-          </div>
-          <div>
-            <label className="label">KDV (%)</label>
-            <input type="number" inputMode="decimal" step="0.01" min="0" max="100" className="input"
-              value={form.tax_rate}
-              onChange={(e) => setForm({ ...form, tax_rate: Number(e.target.value) })} />
-          </div>
-          <div>
-            <label className="label">Düşük Stok Eşiği</label>
-            <input type="number" inputMode="numeric" min="0" className="input"
-              value={form.low_stock_threshold}
-              onChange={(e) => setForm({ ...form, low_stock_threshold: Number(e.target.value) })} />
-          </div>
-          <div className="md:col-span-2 flex justify-end gap-2 pt-2 sticky bottom-0 bg-white pb-1">
-            <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>
-              Vazgeç
-            </button>
-            <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? 'Kaydediliyor…' : 'Kaydet'}
-            </button>
+          <Input label="Maliyet (₺)" type="number" inputMode="decimal" step="0.01" min={0}
+            value={form.cost_price} onChange={(e) => setForm({ ...form, cost_price: Number(e.target.value) })} />
+          <Input label="Satış Fiyatı (₺)" type="number" inputMode="decimal" step="0.01" min={0}
+            value={form.sale_price} onChange={(e) => setForm({ ...form, sale_price: Number(e.target.value) })} />
+          <Input label="KDV (%)" type="number" inputMode="decimal" step="0.01" min={0} max={100}
+            value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: Number(e.target.value) })} />
+          <Input label="Düşük Stok Eşiği" type="number" inputMode="numeric" min={0}
+            value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: Number(e.target.value) })} />
+
+          <div className="md:col-span-2 flex justify-end gap-2 pt-2 sticky bottom-0 bg-white">
+            <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Vazgeç</Button>
+            <Button type="submit" loading={saving}>{editing ? 'Güncelle' : 'Kaydet'}</Button>
           </div>
         </form>
       </Modal>
