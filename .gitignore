@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# DB / data
+*.db
+*.sqlite3
+backend/stok.db
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+# emitted JS artifacts (we author .tsx; tsc is configured noEmit)
+frontend/src/**/*.js
+
+# Env / IDE
+.env
+.env.local
+.idea/
+.vscode/
+.DS_Store
