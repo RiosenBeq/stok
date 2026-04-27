@@ -1,8 +1,10 @@
+'use client';
+
 import { FormEvent, useEffect, useState } from 'react';
-import PageHeader from '../components/PageHeader';
-import Modal from '../components/Modal';
-import { api } from '../lib/api';
-import type { Category, ProductWithStock, Supplier } from '../types/api';
+import PageHeader from '@/components/PageHeader';
+import Modal from '@/components/Modal';
+import { api } from '@/lib/api';
+import type { Category, ProductWithStock, Supplier } from '@/types/api';
 
 const EMPTY_FORM = {
   sku: '',
@@ -17,7 +19,7 @@ const EMPTY_FORM = {
   supplier_id: '' as string | number,
 };
 
-export default function Products() {
+export default function ProductsPage() {
   const [items, setItems] = useState<ProductWithStock[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -37,13 +39,12 @@ export default function Products() {
   }
 
   useEffect(() => {
-    Promise.all([
-      api.get<Category[]>('/categories/'),
-      api.get<Supplier[]>('/suppliers/'),
-    ]).then(([c, s]) => {
-      setCategories(c);
-      setSuppliers(s);
-    });
+    Promise.all([api.get<Category[]>('/categories/'), api.get<Supplier[]>('/suppliers/')]).then(
+      ([c, s]) => {
+        setCategories(c);
+        setSuppliers(s);
+      }
+    );
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -81,7 +82,11 @@ export default function Products() {
       <PageHeader
         title="Ürünler"
         subtitle="Ürün kataloğu ve anlık stok durumu"
-        actions={<button className="btn-primary" onClick={() => setOpen(true)}>+ Yeni Ürün</button>}
+        actions={
+          <button className="btn-primary" onClick={() => setOpen(true)}>
+            + Yeni Ürün
+          </button>
+        }
       />
 
       <div className="card mb-4 flex flex-wrap gap-3 items-center">
@@ -92,7 +97,11 @@ export default function Products() {
           onChange={(e) => setSearch(e.target.value)}
         />
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={lowOnly} onChange={(e) => setLowOnly(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={lowOnly}
+            onChange={(e) => setLowOnly(e.target.checked)}
+          />
           Sadece düşük stok
         </label>
       </div>
@@ -147,54 +156,103 @@ export default function Products() {
         <form onSubmit={onSubmit} className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">SKU *</label>
-            <input className="input" required value={form.sku}
-                   onChange={(e) => setForm({ ...form, sku: e.target.value })} />
+            <input
+              className="input"
+              required
+              value={form.sku}
+              onChange={(e) => setForm({ ...form, sku: e.target.value })}
+            />
           </div>
           <div>
             <label className="label">Barkod</label>
-            <input className="input" value={form.barcode}
-                   onChange={(e) => setForm({ ...form, barcode: e.target.value })} />
+            <input
+              className="input"
+              value={form.barcode}
+              onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+            />
           </div>
           <div className="col-span-2">
             <label className="label">Ürün Adı *</label>
-            <input className="input" required value={form.name}
-                   onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <input
+              className="input"
+              required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
           </div>
           <div>
             <label className="label">Kategori</label>
-            <select className="input" value={form.category_id}
-                    onChange={(e) => setForm({ ...form, category_id: e.target.value })}>
+            <select
+              className="input"
+              value={form.category_id}
+              onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+            >
               <option value="">—</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
             </select>
           </div>
           <div>
             <label className="label">Tedarikçi</label>
-            <select className="input" value={form.supplier_id}
-                    onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}>
+            <select
+              className="input"
+              value={form.supplier_id}
+              onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}
+            >
               <option value="">—</option>
-              {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
             </select>
           </div>
           <div>
             <label className="label">Maliyet (₺)</label>
-            <input type="number" step="0.01" min="0" className="input" value={form.cost_price}
-                   onChange={(e) => setForm({ ...form, cost_price: Number(e.target.value) })} />
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              className="input"
+              value={form.cost_price}
+              onChange={(e) => setForm({ ...form, cost_price: Number(e.target.value) })}
+            />
           </div>
           <div>
             <label className="label">Satış Fiyatı (₺)</label>
-            <input type="number" step="0.01" min="0" className="input" value={form.sale_price}
-                   onChange={(e) => setForm({ ...form, sale_price: Number(e.target.value) })} />
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              className="input"
+              value={form.sale_price}
+              onChange={(e) => setForm({ ...form, sale_price: Number(e.target.value) })}
+            />
           </div>
           <div>
             <label className="label">KDV (%)</label>
-            <input type="number" step="0.01" min="0" max="100" className="input" value={form.tax_rate}
-                   onChange={(e) => setForm({ ...form, tax_rate: Number(e.target.value) })} />
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              className="input"
+              value={form.tax_rate}
+              onChange={(e) => setForm({ ...form, tax_rate: Number(e.target.value) })}
+            />
           </div>
           <div>
             <label className="label">Düşük Stok Eşiği</label>
-            <input type="number" min="0" className="input" value={form.low_stock_threshold}
-                   onChange={(e) => setForm({ ...form, low_stock_threshold: Number(e.target.value) })} />
+            <input
+              type="number"
+              min="0"
+              className="input"
+              value={form.low_stock_threshold}
+              onChange={(e) => setForm({ ...form, low_stock_threshold: Number(e.target.value) })}
+            />
           </div>
           {error && <div className="col-span-2 text-sm text-red-600">{error}</div>}
           <div className="col-span-2 flex justify-end gap-2 pt-2">

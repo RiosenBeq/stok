@@ -1,9 +1,19 @@
-import { useEffect, useState } from 'react';
-import { api } from '../lib/api';
-import PageHeader from '../components/PageHeader';
-import type { DashboardStats, TopProduct } from '../types/api';
+'use client';
 
-function StatCard({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
+import { useEffect, useState } from 'react';
+import PageHeader from '@/components/PageHeader';
+import { api } from '@/lib/api';
+import type { DashboardStats, TopProduct } from '@/types/api';
+
+function StatCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  accent?: string;
+}) {
   return (
     <div className="card">
       <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
@@ -12,7 +22,7 @@ function StatCard({ label, value, accent }: { label: string; value: string | num
   );
 }
 
-export default function Dashboard() {
+export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [top, setTop] = useState<TopProduct[]>([]);
   const [error, setError] = useState<string | null>(null);

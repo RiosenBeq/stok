@@ -1,13 +1,17 @@
+'use client';
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User } from '../types/api';
+import type { User } from '@/types/api';
 
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   user: User | null;
+  hydrated: boolean;
   setTokens: (access: string, refresh: string) => void;
   setUser: (user: User | null) => void;
+  setHydrated: () => void;
   logout: () => void;
 }
 
@@ -17,10 +21,15 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       refreshToken: null,
       user: null,
+      hydrated: false,
       setTokens: (access, refresh) => set({ accessToken: access, refreshToken: refresh }),
       setUser: (user) => set({ user }),
+      setHydrated: () => set({ hydrated: true }),
       logout: () => set({ accessToken: null, refreshToken: null, user: null }),
     }),
-    { name: 'stok-auth' }
+    {
+      name: 'stok-auth',
+      onRehydrateStorage: () => (state) => state?.setHydrated(),
+    }
   )
 );

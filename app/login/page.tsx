@@ -1,9 +1,11 @@
-import { FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+'use client';
 
-export default function Login() {
-  const navigate = useNavigate();
+import { FormEvent, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
+
+export default function LoginPage() {
+  const router = useRouter();
   const { login } = useAuth();
   const [email, setEmail] = useState('admin@stok.local');
   const [password, setPassword] = useState('admin12345');
@@ -16,7 +18,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/');
+      router.replace('/');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Giriş başarısız');
     } finally {

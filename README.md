@@ -1,7 +1,8 @@
 # Stok — Gelişmiş Envanter & Stok Yönetim Sistemi
 
 Çoklu depo, rol tabanlı erişim ve akıllı stok hareket defteri ile çalışan açık kaynak bir
-envanter yönetim platformu. **FastAPI + SQLAlchemy 2 + React/TypeScript + Tailwind**.
+envanter yönetim platformu. **Next.js 14 (App Router) + FastAPI + SQLAlchemy 2 + Tailwind**.
+Vercel'e tek tıkla deploy.
 
 ## Öne Çıkan Özellikler
 
@@ -18,46 +19,47 @@ envanter yönetim platformu. **FastAPI + SQLAlchemy 2 + React/TypeScript + Tailw
 
 ## Hızlı Başlangıç
 
-### Docker (önerilen)
-```bash
-docker compose up --build
-# Frontend: http://localhost:8080
-# API docs: http://localhost:8000/docs
-# Varsayılan giriş: admin@stok.local / admin12345  (üretimde mutlaka değiştirin!)
-```
+### Lokal kurulum
 
-### Manuel kurulum
-
-**Backend**
+**Backend** (terminal 1):
 ```bash
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload    # http://localhost:8000
 ```
 
-**Frontend**
+**Frontend** (terminal 2):
 ```bash
-cd frontend
 npm install
-npm run dev   # http://localhost:5173
+npm run dev                       # http://localhost:3000
+# Next.js, /api/* isteklerini lokalde uvicorn'a proxy eder.
+# Varsayılan giriş: admin@stok.local / admin12345
+```
+
+### Sadece backend'i Docker'da
+```bash
+docker compose up --build         # backend :8000
 ```
 
 ## Mimari
 
 ```
-┌──────────────┐    JSON / JWT    ┌──────────────────────────────┐
-│ React Vite   │ ───────────────► │ FastAPI                      │
-│ TypeScript   │ ◄─────────────── │  ├ api/v1 (auth, products..) │
-│ Tailwind     │                  │  ├ services (inventory)      │
-└──────────────┘                  │  └ models (SQLAlchemy 2)     │
-                                  └──────────────┬───────────────┘
-                                                 │
-                                          ┌──────▼──────┐
-                                          │ SQLite/PG   │
-                                          └─────────────┘
+┌────────────────────┐    JSON / JWT    ┌──────────────────────────────┐
+│ Next.js 14         │ ───────────────► │ FastAPI                      │
+│ App Router · TS    │ ◄─────────────── │  ├ api/v1 (auth, products..) │
+│ Tailwind · Zustand │                  │  ├ services (inventory)      │
+└────────────────────┘                  │  └ models (SQLAlchemy 2)     │
+                                        └──────────────┬───────────────┘
+                                                       │
+                                                ┌──────▼──────┐
+                                                │ SQLite/PG   │
+                                                └─────────────┘
 ```
+
+Vercel'de Next.js statik build + `api/[...path].py` Python serverless function
+(FastAPI ASGI) tek deployment olarak çalışır.
 
 ### Stok hesaplama
 `stock_movements` tablosu append-only bir defterdir. Eldeki miktar her zaman

@@ -1,8 +1,6 @@
-import { useAuthStore } from '../store/auth';
+import { useAuthStore } from '@/store/auth';
 
-// Backend is mounted at /_/backend per .claude/settings.json. The vite dev
-// server proxies that prefix to localhost:8000 so the same path works locally.
-const API_BASE = '/_/backend/api/v1';
+const API_BASE = '/api/v1';
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public body?: unknown) {
@@ -30,7 +28,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       body = await res.text();
     }
     const message =
-      (body && typeof body === 'object' && 'detail' in body && typeof body.detail === 'string')
+      body && typeof body === 'object' && 'detail' in body && typeof body.detail === 'string'
         ? (body as { detail: string }).detail
         : `İstek başarısız (${res.status})`;
     throw new ApiError(res.status, message, body);
@@ -43,7 +41,7 @@ export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
-  postForm: async <T>(path: string, form: Record<string, string>): Promise<T> => {
+  postForm: <T>(path: string, form: Record<string, string>): Promise<T> => {
     const body = new URLSearchParams(form).toString();
     return request<T>(path, {
       method: 'POST',

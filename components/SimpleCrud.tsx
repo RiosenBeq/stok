@@ -1,7 +1,9 @@
+'use client';
+
 import { FormEvent, useEffect, useState } from 'react';
-import PageHeader from '../components/PageHeader';
-import Modal from '../components/Modal';
-import { api } from '../lib/api';
+import PageHeader from './PageHeader';
+import Modal from './Modal';
+import { api } from '@/lib/api';
 
 interface Field {
   name: string;
@@ -18,9 +20,13 @@ interface Props<T extends { id: number }> {
   fields: Field[];
 }
 
-export default function SimpleCrud<T extends { id: number }>(
-  { title, subtitle, endpoint, columns, fields }: Props<T>
-) {
+export default function SimpleCrud<T extends { id: number }>({
+  title,
+  subtitle,
+  endpoint,
+  columns,
+  fields,
+}: Props<T>) {
   const [items, setItems] = useState<T[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
@@ -30,7 +36,10 @@ export default function SimpleCrud<T extends { id: number }>(
     setItems(await api.get<T[]>(endpoint));
   }
 
-  useEffect(() => { reload(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => {
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function openNew() {
     setForm(Object.fromEntries(fields.map((f) => [f.name, ''])));
@@ -57,25 +66,44 @@ export default function SimpleCrud<T extends { id: number }>(
 
   return (
     <>
-      <PageHeader title={title} subtitle={subtitle}
-        actions={<button className="btn-primary" onClick={openNew}>+ Ekle</button>} />
+      <PageHeader
+        title={title}
+        subtitle={subtitle}
+        actions={
+          <button className="btn-primary" onClick={openNew}>
+            + Ekle
+          </button>
+        }
+      />
 
       <div className="card overflow-x-auto">
         <table className="table">
           <thead>
-            <tr>{columns.map((c) => <th key={String(c.key)}>{c.label}</th>)}</tr>
+            <tr>
+              {columns.map((c) => (
+                <th key={String(c.key)}>{c.label}</th>
+              ))}
+            </tr>
           </thead>
           <tbody className="divide-y">
             {items.map((item) => (
               <tr key={item.id}>
                 {columns.map((c) => {
                   const value = (item as unknown as Record<string, unknown>)[c.key];
-                  return <td key={c.key}>{value == null || value === '' ? '—' : String(value)}</td>;
+                  return (
+                    <td key={c.key}>
+                      {value == null || value === '' ? '—' : String(value)}
+                    </td>
+                  );
                 })}
               </tr>
             ))}
             {items.length === 0 && (
-              <tr><td colSpan={columns.length} className="text-center text-slate-400 py-6">Kayıt yok.</td></tr>
+              <tr>
+                <td colSpan={columns.length} className="text-center text-slate-400 py-6">
+                  Kayıt yok.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -85,7 +113,10 @@ export default function SimpleCrud<T extends { id: number }>(
         <form onSubmit={onSubmit} className="space-y-3">
           {fields.map((f) => (
             <div key={f.name}>
-              <label className="label">{f.label}{f.required && ' *'}</label>
+              <label className="label">
+                {f.label}
+                {f.required && ' *'}
+              </label>
               <input
                 type={f.type ?? 'text'}
                 className="input"
@@ -97,8 +128,12 @@ export default function SimpleCrud<T extends { id: number }>(
           ))}
           {error && <div className="text-sm text-red-600">{error}</div>}
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>Vazgeç</button>
-            <button type="submit" className="btn-primary">Kaydet</button>
+            <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>
+              Vazgeç
+            </button>
+            <button type="submit" className="btn-primary">
+              Kaydet
+            </button>
           </div>
         </form>
       </Modal>

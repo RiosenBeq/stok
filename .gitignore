@@ -13,17 +13,18 @@ venv/
 *.sqlite3
 backend/stok.db
 
-# Node
+# Next.js / Node
 node_modules/
-dist/
-.vite/
+.next/
+out/
 *.tsbuildinfo
-# emitted JS artifacts (we author .tsx; tsc is configured noEmit)
-frontend/src/**/*.js
 
 # Env / IDE
 .env
-.env.local
+.env*.local
 .idea/
 .vscode/
 .DS_Store
+
+# Vercel
+.vercel

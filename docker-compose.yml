@@ -1,3 +1,5 @@
+# Backend-only docker-compose. The frontend is now a Next.js app — run it with
+# `npm run dev` (local) or deploy to Vercel (production).
 services:
   backend:
     build: ./backend
@@ -6,7 +8,7 @@ services:
       SECRET_KEY: ${SECRET_KEY:-please-change-me-to-a-long-random-secret-key}
       ENVIRONMENT: production
       DEBUG: "false"
-      CORS_ORIGINS: '["http://localhost"]'
+      CORS_ORIGINS: '["http://localhost:3000"]'
     volumes:
       - backend_data:/data
     ports:
@@ -16,13 +18,6 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-
-  frontend:
-    build: ./frontend
-    depends_on:
-      - backend
-    ports:
-      - "8080:80"
 
 volumes:
   backend_data:

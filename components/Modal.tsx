@@ -1,3 +1,5 @@
+'use client';
+
 import { ReactNode } from 'react';
 
 export default function Modal({
@@ -23,7 +25,10 @@ export default function Modal({
       >
         <div className="flex items-center justify-between border-b px-5 py-3">
           <h3 className="text-lg font-semibold">{title}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+          >
             ×
           </button>
         </div>
