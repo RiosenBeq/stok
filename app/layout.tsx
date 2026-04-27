@@ -7,14 +7,19 @@ import Toaster from '@/components/Toaster';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Stok Yönetim Sistemi',
+    default: 'Stok — Burger Franchise',
     template: '%s · Stok',
   },
-  description: 'Çoklu depolu, rol tabanlı stok ve envanter yönetimi',
+  description: 'Çoklu şubeli burger franchise envanter ve satış sistemi',
   applicationName: 'Stok',
   authors: [{ name: 'Stok' }],
-  keywords: ['stok', 'envanter', 'depo', 'yönetim'],
+  keywords: ['stok', 'envanter', 'şube', 'burger', 'franchise', 'POS'],
   robots: { index: false, follow: false },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Stok',
+  },
 };
 
 export const viewport: Viewport = {

@@ -118,3 +118,44 @@ export interface FoodCostRow {
   margin: number;
   food_cost_pct: number;
 }
+
+export interface SaleItem {
+  id: number;
+  menu_item_id: number;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+  menu_item_name?: string | null;
+  menu_item_sku?: string | null;
+}
+
+export interface Sale {
+  id: number;
+  code: string;
+  warehouse_id: number;
+  user_id?: number | null;
+  total: number;
+  cost: number;
+  note?: string | null;
+  created_at: string;
+  items: SaleItem[];
+  warehouse_code?: string | null;
+}
+
+export interface DailySnapshot {
+  warehouse_id: number | null;
+  warehouse_code: string | null;
+  sales_count: number;
+  units_sold: number;
+  revenue: number;
+  cost: number;
+  margin: number;
+  waste_units: number;
+  waste_value: number;
+}
+
+export interface TrendPoint {
+  date: string;
+  revenue: number;
+  sales: number;
+}

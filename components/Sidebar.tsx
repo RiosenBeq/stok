@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 export const NAV: Array<{ href: string; label: string; icon: string; primary?: boolean }> = [
   { href: '/', label: 'Pano', icon: '📊', primary: true },
   { href: '/sell', label: 'Hızlı Satış', icon: '🍔', primary: true },
+  { href: '/sales', label: 'Satış Geçmişi', icon: '🧾' },
   { href: '/menu', label: 'Menü & Reçete', icon: '📖' },
   { href: '/products', label: 'Stok / Malzeme', icon: '📦', primary: true },
   { href: '/movements', label: 'Hareketler', icon: '🔄', primary: true },
@@ -14,6 +15,7 @@ export const NAV: Array<{ href: string; label: string; icon: string; primary?: b
   { href: '/warehouses', label: 'Şubeler', icon: '🏪', primary: true },
   { href: '/suppliers', label: 'Tedarikçi', icon: '🤝' },
   { href: '/categories', label: 'Kategori', icon: '🗂️' },
+  { href: '/profile', label: 'Profil', icon: '👤' },
 ];
 
 export default function Sidebar() {

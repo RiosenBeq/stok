@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -8,6 +8,9 @@ import { RowCard } from '@/components/ResponsiveCard';
 import { api } from '@/lib/api';
 import { toast } from '@/store/toast';
 import type { Category, ProductWithStock, Supplier } from '@/types/api';
+
+type SortKey = 'sku' | 'name' | 'on_hand' | 'cost_price' | 'sale_price';
+type SortDir = 'asc' | 'desc';
 
 interface FormState {
   sku: string;
@@ -47,6 +50,8 @@ export default function ProductsPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [search, setSearch] = useState('');
   const [lowOnly, setLowOnly] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ProductWithStock | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -141,6 +146,43 @@ export default function ProductsPage() {
     }
   }
 
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  }
+
+  const sorted = useMemo(() => {
+    if (!items) return null;
+    const arr = [...items];
+    arr.sort((a, b) => {
+      const av = (a as unknown as Record<string, unknown>)[sortKey];
+      const bv = (b as unknown as Record<string, unknown>)[sortKey];
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return sortDir === 'asc' ? av - bv : bv - av;
+      }
+      const as = String(av ?? '');
+      const bs = String(bv ?? '');
+      return sortDir === 'asc' ? as.localeCompare(bs, 'tr') : bs.localeCompare(as, 'tr');
+    });
+    return arr;
+  }, [items, sortKey, sortDir]);
+
+  function SortHeader({ k, label, align = 'left' }: { k: SortKey; label: string; align?: 'left' | 'right' }) {
+    const arrow = sortKey === k ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+    return (
+      <th
+        className={`cursor-pointer select-none hover:bg-slate-100 ${align === 'right' ? 'text-right' : ''}`}
+        onClick={() => toggleSort(k)}
+      >
+        {label}{arrow}
+      </th>
+    );
+  }
+
   return (
     <>
       <PageHeader
@@ -175,14 +217,14 @@ export default function ProductsPage() {
 
       {/* Mobile: card list */}
       <div className="md:hidden space-y-2">
-        {items === null ? (
+        {sorted === null ? (
           <div className="text-center text-slate-400 py-6">Yükleniyor…</div>
-        ) : items.length === 0 ? (
+        ) : sorted.length === 0 ? (
           <div className="text-center text-slate-400 py-10">
             {search || lowOnly ? 'Filtreyle eşleşen yok.' : '+ Yeni Malzeme ile başlayın.'}
           </div>
         ) : (
-          items.map((p) => (
+          sorted.map((p) => (
             <RowCard
               key={p.id}
               title={p.name}
@@ -221,32 +263,32 @@ export default function ProductsPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>SKU</th>
-              <th>Malzeme</th>
+              <SortHeader k="sku" label="SKU" />
+              <SortHeader k="name" label="Malzeme" />
               <th>Kategori</th>
-              <th className="text-right">Stok</th>
+              <SortHeader k="on_hand" label="Stok" align="right" />
               <th className="text-right">Eşik</th>
-              <th className="text-right">Maliyet</th>
-              <th className="text-right">Satış</th>
+              <SortHeader k="cost_price" label="Maliyet" align="right" />
+              <SortHeader k="sale_price" label="Satış" align="right" />
               <th>Durum</th>
               <th className="w-28 text-right">İşlem</th>
             </tr>
           </thead>
           <tbody className="divide-y">
-            {items === null ? (
+            {sorted === null ? (
               <tr>
                 <td colSpan={9} className="text-center text-slate-400 py-6">
                   Yükleniyor…
                 </td>
               </tr>
-            ) : items.length === 0 ? (
+            ) : sorted.length === 0 ? (
               <tr>
                 <td colSpan={9} className="text-center text-slate-400 py-10">
                   {search || lowOnly ? 'Filtreyle eşleşen yok.' : 'Henüz malzeme yok.'}
                 </td>
               </tr>
             ) : (
-              items.map((p) => (
+              sorted.map((p) => (
                 <tr key={p.id} className="hover:bg-slate-50">
                   <td className="font-mono">{p.sku}</td>
                   <td>{p.name}</td>

@@ -1,12 +1,19 @@
 """User management routes - admin only."""
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_role
+from app.core.security import hash_password, verify_password
 from app.models.user import User, UserRole
 from app.schemas.auth import UserCreate, UserOut, UserUpdate
 from app.services import users as users_service
+
+
+class PasswordChange(BaseModel):
+    current_password: str = Field(min_length=1)
+    new_password: str = Field(min_length=8, max_length=128)
 
 router = APIRouter()
 
@@ -54,3 +61,19 @@ def update_user(
 @router.get("/me", response_model=UserOut)
 def me(current: User = Depends(get_current_user)) -> User:
     return current
+
+
+@router.patch("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+def change_my_password(
+    payload: PasswordChange,
+    db: Session = Depends(get_db),
+    current: User = Depends(get_current_user),
+) -> None:
+    if not verify_password(payload.current_password, current.hashed_password):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Mevcut şifre yanlış")
+    if payload.current_password == payload.new_password:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Yeni şifre eskiyle aynı olamaz"
+        )
+    current.hashed_password = hash_password(payload.new_password)
+    db.commit()
