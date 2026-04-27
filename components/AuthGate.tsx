@@ -21,7 +21,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }, [hydrated, accessToken, onLoginPage, router]);
 
   if (!hydrated) {
-    return <div className="p-8 text-slate-500">Yükleniyor…</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3 text-slate-500">
+          <div className="text-4xl animate-pulse">📦</div>
+          <div className="text-sm">Yükleniyor…</div>
+        </div>
+      </div>
+    );
   }
   if (!accessToken && !onLoginPage) return null;
   if (accessToken && onLoginPage) return null;

@@ -49,3 +49,17 @@ def update_warehouse(
     db.commit()
     db.refresh(warehouse)
     return warehouse
+
+
+@router.delete("/{warehouse_id}", status_code=status.HTTP_204_NO_CONTENT)
+def deactivate_warehouse(
+    warehouse_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_min_role(UserRole.MANAGER)),
+) -> None:
+    """Soft-delete: deactivate. Movement history is preserved."""
+    warehouse = db.get(Warehouse, warehouse_id)
+    if not warehouse:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Depo bulunamadı")
+    warehouse.is_active = False
+    db.commit()

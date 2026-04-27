@@ -3,10 +3,25 @@
 import { FormEvent, useEffect, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import Modal from '@/components/Modal';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { api } from '@/lib/api';
+import { toast } from '@/store/toast';
 import type { Category, ProductWithStock, Supplier } from '@/types/api';
 
-const EMPTY_FORM = {
+interface FormState {
+  sku: string;
+  barcode: string;
+  name: string;
+  unit: string;
+  cost_price: number;
+  sale_price: number;
+  tax_rate: number;
+  low_stock_threshold: number;
+  category_id: string;
+  supplier_id: string;
+}
+
+const EMPTY_FORM: FormState = {
   sku: '',
   barcode: '',
   name: '',
@@ -15,36 +30,41 @@ const EMPTY_FORM = {
   sale_price: 0,
   tax_rate: 18,
   low_stock_threshold: 10,
-  category_id: '' as string | number,
-  supplier_id: '' as string | number,
+  category_id: '',
+  supplier_id: '',
 };
 
 export default function ProductsPage() {
-  const [items, setItems] = useState<ProductWithStock[]>([]);
+  const [items, setItems] = useState<ProductWithStock[] | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [search, setSearch] = useState('');
   const [lowOnly, setLowOnly] = useState(false);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState<ProductWithStock | null>(null);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
 
   async function reload() {
     const params = new URLSearchParams();
     if (search) params.set('q', search);
     if (lowOnly) params.set('low_stock_only', 'true');
-    const data = await api.get<ProductWithStock[]>(`/products/?${params.toString()}`);
-    setItems(data);
+    try {
+      const data = await api.get<ProductWithStock[]>(`/products/?${params.toString()}`);
+      setItems(data);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Yüklenemedi');
+    }
   }
 
   useEffect(() => {
-    Promise.all([api.get<Category[]>('/categories/'), api.get<Supplier[]>('/suppliers/')]).then(
-      ([c, s]) => {
+    Promise.all([api.get<Category[]>('/categories/'), api.get<Supplier[]>('/suppliers/')])
+      .then(([c, s]) => {
         setCategories(c);
         setSuppliers(s);
-      }
-    );
+      })
+      .catch(() => {/* non-fatal */});
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -55,25 +75,63 @@ export default function ProductsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, lowOnly]);
 
+  function openNew() {
+    setEditing(null);
+    setForm(EMPTY_FORM);
+    setOpen(true);
+  }
+
+  function openEdit(p: ProductWithStock) {
+    setEditing(p);
+    setForm({
+      sku: p.sku,
+      barcode: p.barcode ?? '',
+      name: p.name,
+      unit: p.unit,
+      cost_price: Number(p.cost_price),
+      sale_price: Number(p.sale_price),
+      tax_rate: Number(p.tax_rate),
+      low_stock_threshold: p.low_stock_threshold,
+      category_id: p.category_id == null ? '' : String(p.category_id),
+      supplier_id: p.supplier_id == null ? '' : String(p.supplier_id),
+    });
+    setOpen(true);
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
+    setSaving(true);
+    const payload = {
+      ...form,
+      category_id: form.category_id === '' ? null : Number(form.category_id),
+      supplier_id: form.supplier_id === '' ? null : Number(form.supplier_id),
+      barcode: form.barcode || null,
+    };
     try {
-      const payload = {
-        ...form,
-        category_id: form.category_id === '' ? null : Number(form.category_id),
-        supplier_id: form.supplier_id === '' ? null : Number(form.supplier_id),
-        barcode: form.barcode || null,
-      };
-      await api.post('/products/', payload);
+      if (editing) {
+        await api.patch(`/products/${editing.id}`, payload);
+        toast.success('Ürün güncellendi');
+      } else {
+        await api.post('/products/', payload);
+        toast.success('Ürün eklendi');
+      }
       setOpen(false);
-      setForm(EMPTY_FORM);
       reload();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Hata');
+      toast.error(err instanceof Error ? err.message : 'Hata');
     } finally {
-      setLoading(false);
+      setSaving(false);
+    }
+  }
+
+  async function onDelete(id: number) {
+    setConfirmingId(null);
+    try {
+      await api.delete(`/products/${id}`);
+      toast.success('Ürün pasifleştirildi');
+      reload();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Silinemedi');
     }
   }
 
@@ -83,7 +141,7 @@ export default function ProductsPage() {
         title="Ürünler"
         subtitle="Ürün kataloğu ve anlık stok durumu"
         actions={
-          <button className="btn-primary" onClick={() => setOpen(true)}>
+          <button className="btn-primary" onClick={openNew}>
             + Yeni Ürün
           </button>
         }
@@ -104,6 +162,11 @@ export default function ProductsPage() {
           />
           Sadece düşük stok
         </label>
+        {items && (
+          <span className="text-xs text-slate-500 ml-auto">
+            {items.length} kayıt
+          </span>
+        )}
       </div>
 
       <div className="card overflow-x-auto">
@@ -118,41 +181,71 @@ export default function ProductsPage() {
               <th className="text-right">Maliyet</th>
               <th className="text-right">Satış</th>
               <th>Durum</th>
+              <th className="w-28 text-right">İşlem</th>
             </tr>
           </thead>
           <tbody className="divide-y">
-            {items.map((p) => (
-              <tr key={p.id}>
-                <td className="font-mono">{p.sku}</td>
-                <td>{p.name}</td>
-                <td>{categories.find((c) => c.id === p.category_id)?.name ?? '—'}</td>
-                <td className="text-right">{p.on_hand}</td>
-                <td className="text-right text-slate-500">{p.low_stock_threshold}</td>
-                <td className="text-right">{Number(p.cost_price).toFixed(2)}</td>
-                <td className="text-right">{Number(p.sale_price).toFixed(2)}</td>
-                <td>
-                  {!p.is_active ? (
-                    <span className="badge-slate">Pasif</span>
-                  ) : p.is_low_stock ? (
-                    <span className="badge-amber">Düşük</span>
-                  ) : (
-                    <span className="badge-green">Yeterli</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {items.length === 0 && (
+            {items === null ? (
               <tr>
-                <td colSpan={8} className="text-center text-slate-400 py-6">
-                  Kayıt bulunamadı.
+                <td colSpan={9} className="text-center text-slate-400 py-6">
+                  Yükleniyor…
                 </td>
               </tr>
+            ) : items.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="text-center text-slate-400 py-10">
+                  {search || lowOnly
+                    ? 'Filtreyle eşleşen ürün yok.'
+                    : 'Henüz ürün yok. + Yeni Ürün ile başlayın.'}
+                </td>
+              </tr>
+            ) : (
+              items.map((p) => (
+                <tr key={p.id} className="hover:bg-slate-50">
+                  <td className="font-mono">{p.sku}</td>
+                  <td>{p.name}</td>
+                  <td>{categories.find((c) => c.id === p.category_id)?.name ?? '—'}</td>
+                  <td className="text-right">{p.on_hand}</td>
+                  <td className="text-right text-slate-500">{p.low_stock_threshold}</td>
+                  <td className="text-right">{Number(p.cost_price).toFixed(2)}</td>
+                  <td className="text-right">{Number(p.sale_price).toFixed(2)}</td>
+                  <td>
+                    {!p.is_active ? (
+                      <span className="badge-slate">Pasif</span>
+                    ) : p.is_low_stock ? (
+                      <span className="badge-amber">Düşük</span>
+                    ) : (
+                      <span className="badge-green">Yeterli</span>
+                    )}
+                  </td>
+                  <td className="text-right whitespace-nowrap">
+                    <button
+                      onClick={() => openEdit(p)}
+                      className="text-brand-700 hover:underline mr-3 text-xs"
+                    >
+                      Düzenle
+                    </button>
+                    {p.is_active && (
+                      <button
+                        onClick={() => setConfirmingId(p.id)}
+                        className="text-red-600 hover:underline text-xs"
+                      >
+                        Sil
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
       </div>
 
-      <Modal open={open} title="Yeni Ürün" onClose={() => setOpen(false)}>
+      <Modal
+        open={open}
+        title={editing ? `Ürünü düzenle: ${editing.sku}` : 'Yeni Ürün'}
+        onClose={() => setOpen(false)}
+      >
         <form onSubmit={onSubmit} className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">SKU *</label>
@@ -254,17 +347,25 @@ export default function ProductsPage() {
               onChange={(e) => setForm({ ...form, low_stock_threshold: Number(e.target.value) })}
             />
           </div>
-          {error && <div className="col-span-2 text-sm text-red-600">{error}</div>}
           <div className="col-span-2 flex justify-end gap-2 pt-2">
             <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>
               Vazgeç
             </button>
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Kaydediliyor…' : 'Kaydet'}
+            <button type="submit" className="btn-primary" disabled={saving}>
+              {saving ? 'Kaydediliyor…' : 'Kaydet'}
             </button>
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={confirmingId !== null}
+        title="Ürünü pasifleştir"
+        message="Ürün pasifleştirilecek (geçmiş hareketler korunur). Devam etmek istiyor musunuz?"
+        confirmLabel="Pasifleştir"
+        onConfirm={() => confirmingId !== null && onDelete(confirmingId)}
+        onCancel={() => setConfirmingId(null)}
+      />
     </>
   );
 }

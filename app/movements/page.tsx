@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import Modal from '@/components/Modal';
 import { api } from '@/lib/api';
+import { toast } from '@/store/toast';
 import type { Product, StockMovement, Warehouse } from '@/types/api';
 
 export default function MovementsPage() {
@@ -11,7 +12,7 @@ export default function MovementsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [open, setOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     product_id: '',
     warehouse_id: '',
@@ -41,7 +42,7 @@ export default function MovementsPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
+    setSaving(true);
     try {
       await api.post('/inventory/movements', {
         product_id: Number(form.product_id),
@@ -51,10 +52,13 @@ export default function MovementsPage() {
         reference: form.reference || null,
         note: form.note || null,
       });
+      toast.success(form.type === 'in' ? 'Stok girişi kaydedildi' : 'Stok çıkışı kaydedildi');
       setOpen(false);
       reload();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Hata');
+      toast.error(err instanceof Error ? err.message : 'Hata');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -199,13 +203,12 @@ export default function MovementsPage() {
               onChange={(e) => setForm({ ...form, note: e.target.value })}
             />
           </div>
-          {error && <div className="text-sm text-red-600">{error}</div>}
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>
               Vazgeç
             </button>
-            <button type="submit" className="btn-primary">
-              Kaydet
+            <button type="submit" className="btn-primary" disabled={saving}>
+              {saving ? 'Kaydediliyor…' : 'Kaydet'}
             </button>
           </div>
         </form>
