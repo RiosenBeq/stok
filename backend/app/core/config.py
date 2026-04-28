@@ -38,8 +38,8 @@ class Settings(BaseSettings):
 
     LOW_STOCK_DEFAULT_THRESHOLD: int = 10
 
-    FIRST_SUPERUSER_EMAIL: str = "admin@stok.local"
-    FIRST_SUPERUSER_PASSWORD: str = "admin12345"
+    FIRST_SUPERUSER_EMAIL: str = "test@test.com"
+    FIRST_SUPERUSER_PASSWORD: str = "test123"
     FIRST_SUPERUSER_FULL_NAME: str = "System Administrator"
 
 

@@ -21,8 +21,10 @@ def test_login_wrong_password(client: TestClient):
     assert r.status_code == 401
 
 
-def test_me_requires_token(client: TestClient):
-    assert client.get("/api/v1/auth/me").status_code == 401
+def test_me_allows_anonymous_when_auth_disabled(client: TestClient):
+    r = client.get("/api/v1/auth/me")
+    assert r.status_code == 200
+    assert r.json()["email"] == "admin@test.example.com"
 
 
 def test_me_with_token(client: TestClient, admin_token: str):

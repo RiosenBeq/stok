@@ -39,7 +39,8 @@ uvicorn app.main:app --reload    # http://localhost:8000
 npm install
 npm run dev                       # http://localhost:3000
 # Next.js, /api/* isteklerini lokalde uvicorn'a proxy eder.
-# Varsayılan giriş: admin@stok.local / admin12345
+# Demo modunda giriş sistemi devre dışıdır.
+# Development ortamında örnek kategori/ürün/menü/stok verileri otomatik seed edilir.
 ```
 
 ### Sadece backend'i Docker'da

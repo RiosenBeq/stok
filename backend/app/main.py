@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     if settings.ENVIRONMENT == "production":
         if settings.SECRET_KEY.startswith("change-me"):
             logger.error("SECRET_KEY is using the default value. Set it via env in production.")
-        if settings.FIRST_SUPERUSER_PASSWORD == "admin12345":
+        if settings.FIRST_SUPERUSER_PASSWORD == "test123":
             logger.warning(
                 "FIRST_SUPERUSER_PASSWORD is the default. Change it after first login."
             )
