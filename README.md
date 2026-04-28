@@ -39,7 +39,7 @@ uvicorn app.main:app --reload    # http://localhost:8000
 npm install
 npm run dev                       # http://localhost:3000
 # Next.js, /api/* isteklerini lokalde uvicorn'a proxy eder.
-# Varsayılan giriş: test@test.com / test123
+# Demo modunda giriş sistemi devre dışıdır.
 ```
 
 ### Sadece backend'i Docker'da
