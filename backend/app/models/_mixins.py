@@ -1,12 +1,12 @@
 """Reusable mixins for ORM models."""
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 
 def _utcnow() -> datetime:
-    return datetime.now(UTC)
+    return datetime.now(timezone.utc)
 
 
 class TimestampMixin:

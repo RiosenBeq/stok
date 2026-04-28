@@ -1,5 +1,5 @@
 """POS sales: cart checkout + history."""
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -114,7 +114,7 @@ def daily_snapshot(
     _: User = Depends(require_min_role(UserRole.VIEWER)),
 ) -> list[DailySnapshot]:
     """Today's KPIs per branch (revenue, cost, units, waste)."""
-    target = on or datetime.now(UTC).date()
+    target = on or datetime.now(timezone.utc).date()
     start = datetime.combine(target, datetime.min.time())
     end = datetime.combine(target, datetime.max.time())
 
@@ -189,7 +189,7 @@ def revenue_trend(
     _: User = Depends(require_min_role(UserRole.VIEWER)),
 ) -> list[TrendPoint]:
     """Daily revenue + sales count for the last N days. Includes zero-buckets."""
-    end_date = datetime.now(UTC).date()
+    end_date = datetime.now(timezone.utc).date()
     start_date = end_date - timedelta(days=days - 1)
     start = datetime.combine(start_date, datetime.min.time())
 

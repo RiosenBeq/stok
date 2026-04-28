@@ -21,11 +21,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     useAuthStore.getState().logout();
   }
   if (!res.ok) {
+    const text = await res.text();
     let body: unknown;
     try {
-      body = await res.json();
+      body = JSON.parse(text);
     } catch {
-      body = await res.text();
+      body = text;
     }
     const message =
       body && typeof body === 'object' && 'detail' in body && typeof body.detail === 'string'

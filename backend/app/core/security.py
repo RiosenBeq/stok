@@ -1,5 +1,6 @@
+from __future__ import annotations
 """Password hashing and JWT token utilities."""
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from jose import JWTError, jwt
@@ -19,11 +20,11 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def _create_token(subject: str | int, expires_delta: timedelta, token_type: str) -> str:
-    expire = datetime.now(UTC) + expires_delta
+    expire = datetime.now(timezone.utc) + expires_delta
     payload: dict[str, Any] = {
         "sub": str(subject),
         "exp": expire,
-        "iat": datetime.now(UTC),
+        "iat": datetime.now(timezone.utc),
         "type": token_type,
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

@@ -5,8 +5,8 @@ const nextConfig = {
   async rewrites() {
     if (process.env.NODE_ENV === 'production') return [];
     return [
-      { source: '/api/:path*', destination: 'http://localhost:8000/api/:path*' },
-      { source: '/_/backend/api/:path*', destination: 'http://localhost:8000/api/:path*' },
+      { source: '/api/:path*', destination: 'http://localhost:8001/api/:path*' },
+      { source: '/_/backend/api/:path*', destination: 'http://localhost:8001/api/:path*' },
     ];
   },
 };
