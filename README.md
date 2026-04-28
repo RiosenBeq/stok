@@ -40,6 +40,7 @@ npm install
 npm run dev                       # http://localhost:3000
 # Next.js, /api/* isteklerini lokalde uvicorn'a proxy eder.
 # Demo modunda giriş sistemi devre dışıdır.
+# Development ortamında örnek kategori/ürün/menü/stok verileri otomatik seed edilir.
 ```
 
 ### Sadece backend'i Docker'da

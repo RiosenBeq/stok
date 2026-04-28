@@ -6,6 +6,11 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.security import hash_password, verify_password
 from app.db.session import Base, SessionLocal, engine
+from app.models.category import Category
+from app.models.menu import MenuItem, RecipeItem
+from app.models.product import Product
+from app.models.stock import MovementType, StockMovement
+from app.models.supplier import Supplier
 from app.models.user import User, UserRole
 from app.models.warehouse import Warehouse
 
@@ -20,6 +25,7 @@ def init_db() -> None:
     with SessionLocal() as db:
         _seed_superuser(db)
         _seed_default_warehouse(db)
+        _seed_demo_data(db)
         db.commit()
 
 
@@ -59,3 +65,88 @@ def _seed_default_warehouse(db: Session) -> None:
         )
     )
     logger.info("Seeded default warehouse MAIN")
+
+
+def _seed_demo_data(db: Session) -> None:
+    if settings.ENVIRONMENT != "development":
+        return
+    if db.query(Product).first():
+        return
+
+    category = Category(name="Et & Protein", description="Burger köftesi vb.")
+    supplier = Supplier(
+        name="Demo Tedarik A.Ş.",
+        contact_name="Demo Satış",
+        email="satis@demo.tedarik",
+        phone="+90 212 000 00 00",
+        is_active=True,
+    )
+    db.add_all([category, supplier])
+    db.flush()
+
+    patty = Product(
+        sku="PRD-PATTY-150",
+        name="Dana Köfte 150g",
+        unit="adet",
+        cost_price=42.50,
+        sale_price=0,
+        low_stock_threshold=20,
+        category_id=category.id,
+        supplier_id=supplier.id,
+        is_active=True,
+    )
+    bun = Product(
+        sku="PRD-BUN-001",
+        name="Burger Ekmeği",
+        unit="adet",
+        cost_price=6.00,
+        sale_price=0,
+        low_stock_threshold=30,
+        category_id=category.id,
+        supplier_id=supplier.id,
+        is_active=True,
+    )
+    db.add_all([patty, bun])
+    db.flush()
+
+    menu_item = MenuItem(
+        sku="MENU-KLASIK-001",
+        name="Klasik Burger",
+        description="Demo menü ürünü",
+        price=195,
+        is_active=True,
+    )
+    db.add(menu_item)
+    db.flush()
+    db.add_all(
+        [
+            RecipeItem(menu_item_id=menu_item.id, product_id=patty.id, quantity=1),
+            RecipeItem(menu_item_id=menu_item.id, product_id=bun.id, quantity=1),
+        ]
+    )
+
+    main_warehouse = db.query(Warehouse).filter(Warehouse.code == "MAIN").first()
+    if main_warehouse:
+        db.add_all(
+            [
+                StockMovement(
+                    product_id=patty.id,
+                    warehouse_id=main_warehouse.id,
+                    type=MovementType.IN,
+                    quantity=100,
+                    unit_cost=42.50,
+                    reference="DEMO-SEED",
+                    note="Demo başlangıç stoğu",
+                ),
+                StockMovement(
+                    product_id=bun.id,
+                    warehouse_id=main_warehouse.id,
+                    type=MovementType.IN,
+                    quantity=150,
+                    unit_cost=6.00,
+                    reference="DEMO-SEED",
+                    note="Demo başlangıç stoğu",
+                ),
+            ]
+        )
+    logger.info("Seeded demo catalog, menu item and opening stock")
