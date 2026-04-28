@@ -4,7 +4,7 @@ import logging
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password
 from app.db.session import Base, SessionLocal, engine
 from app.models.user import User, UserRole
 from app.models.warehouse import Warehouse
@@ -26,6 +26,15 @@ def init_db() -> None:
 def _seed_superuser(db: Session) -> None:
     existing = db.query(User).filter(User.email == settings.FIRST_SUPERUSER_EMAIL).first()
     if existing:
+        # Development convenience: keep seeded credentials in sync with config.
+        # This prevents stale local DB passwords from causing "wrong password"
+        # errors after changing FIRST_SUPERUSER_PASSWORD.
+        if (
+            settings.ENVIRONMENT == "development"
+            and not verify_password(settings.FIRST_SUPERUSER_PASSWORD, existing.hashed_password)
+        ):
+            existing.hashed_password = hash_password(settings.FIRST_SUPERUSER_PASSWORD)
+            logger.info("Updated seeded superuser password for %s", settings.FIRST_SUPERUSER_EMAIL)
         return
     user = User(
         email=settings.FIRST_SUPERUSER_EMAIL,
