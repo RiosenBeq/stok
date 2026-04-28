@@ -32,8 +32,8 @@ export default function LoginPage() {
   }
 
   function fillDemo() {
-    setEmail('admin@stok.local');
-    setPassword('admin12345');
+    setEmail('test@test.com');
+    setPassword('test123');
   }
 
   return (
@@ -69,7 +69,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={8}
+                minLength={7}
               />
               <button
                 type="button"
