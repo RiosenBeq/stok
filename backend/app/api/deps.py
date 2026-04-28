@@ -3,6 +3,7 @@ from collections.abc import Generator
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.security import decode_token
@@ -25,7 +26,10 @@ def get_current_user(
     db: Session = Depends(get_db),
 ) -> User:
     if not token:
-        user = db.query(User).filter(User.is_active.is_(True)).order_by(User.id.asc()).first()
+        try:
+            user = db.query(User).filter(User.is_active.is_(True)).order_by(User.id.asc()).first()
+        except SQLAlchemyError as exc:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User inactive or missing") from exc
         if not user:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User inactive or missing")
         return user
